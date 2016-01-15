@@ -6,9 +6,8 @@
     - Group
         - set of member coordinates
         - possibly also track liberties and neighboring opponent coords
-    - one [(UID, Group)] per color
-    - Board = Coord => (Color, UID, Group)
-        - do we need the UID (for fast comparison)?
+        - uniquely identify via uppermost-leftmost member for fast comparison?
+    - Board = Coord => (Color, Group)
     - neighboring coords
     - neighboring group identification
     - stone insertion
@@ -30,6 +29,7 @@
             - whose turn is it?
     - simple whole-variation ko recognition
         - check for identical positions in a particular variation
+            - Zobrist hashing?
     - insertion/deletion for cutting/grafting
 
 - visualization
