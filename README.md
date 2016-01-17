@@ -2,19 +2,6 @@
 
 ## TODO
 
-- board state
-    - Group
-        - set of member coordinates
-        - possibly also track liberties and neighboring opponent coords
-        - uniquely identify via uppermost-leftmost member for fast comparison?
-    - Board = Coord => (Color, Group)
-    - neighboring coords
-    - neighboring group identification
-    - stone insertion
-        - liberty reduction
-        - group merging
-        - capture resolution
-
 - variation trees
     - current position in tree tracked via zipper
     - Position
