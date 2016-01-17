@@ -1,0 +1,50 @@
+module Goban.UI
+  where
+
+import Goban.Position as GP
+
+import Color
+import Graphics.Collage as GC
+
+-- TODO: parametric scaling
+stoneRad = 10
+scaled x = x * stoneRad * 2
+star = GC.filled (Color.black) <| GC.circle (stoneRad / 3)
+
+stoneColor st = case st of
+  GP.Black -> Color.black
+  GP.White -> Color.white
+
+stoneForm st = let color = stoneColor st
+                   circle = GC.circle stoneRad
+                   center = GC.filled color circle
+                   border = GC.outlined (GC.solid Color.black) circle
+               in GC.group [center, border]
+
+sizedCoord (x, y) = (scaled <| toFloat x, scaled <| toFloat y)
+scaledSeg c0 c1 = GC.segment (sizedCoord c0) (sizedCoord c1)
+starAt coord = GC.move (sizedCoord coord) star
+
+stoneFormMoved coord = GC.move (sizedCoord coord) << stoneForm
+
+lineTracer = GC.traced (GC.solid Color.black)
+
+boardElement board =
+  let ixs = [1 .. board.size]
+      cell coord = Maybe.map (stoneFormMoved coord) <| GP.get board coord
+      row ypos = List.filterMap identity <| List.map (\x -> cell (x, ypos)) ixs
+      stones = GC.group << List.concat <| List.map row ixs
+      offset = stoneRad
+      dim = board.size
+      hline y = lineTracer <| scaledSeg (1, y) (dim, y)
+      vline x = lineTracer <| scaledSeg (x, 1) (x, dim)
+      hints = List.map hline <| ixs
+      vints = List.map vline <| ixs
+      --ints = GC.move (offset, offset) << GC.group <| hints ++ vints
+      -- TODO: how should star locations be derived?
+      stars = GC.group <| List.map starAt [(3,3), (7,3), (7,7), (3,7), (5,5)]
+      ints = GC.group <| hints ++ vints
+      all = GC.scale 2 <| GC.move (sizedCoord (-board.size, -board.size)) <| GC.group [ints, stars, stones]
+  in GC.collage 400 400 [all]
+
+-- TODO: coord-clicks signal
