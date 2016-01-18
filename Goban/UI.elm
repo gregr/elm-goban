@@ -55,3 +55,10 @@ boardElement board =
   in GC.collage 400 400 [all]
 
 -- TODO: coord-clicks signal
+
+posToCoord (xa, ya) =
+  let trans p = round <| toFloat p / scaled 1.5
+      x = trans (xa - 80) + 1
+      y = trans (322 - ya) + 1
+      legal p = p >= 1 && p <= 9
+  in if legal x && legal y then Just (x, y) else Nothing
