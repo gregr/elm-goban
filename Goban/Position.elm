@@ -1,9 +1,8 @@
 module Goban.Position
   where
 
-import Dict as Dict exposing (Dict)
-import Maybe
-import Set as Set exposing (Set)
+import Dict exposing (Dict)
+import Set exposing (Set)
 
 type Stone = Black | White
 
@@ -63,16 +62,6 @@ add stone coord board = case get board coord of
       Nothing -> case removeCaptured stone [coord] of
         Just result -> result
         Nothing -> (board', Nothing)
-
-testb =
-  add Black (5,5) (empty 9) `Maybe.andThen`
-  (fst >> add White (3,5)) `Maybe.andThen`
-  --(fst >> add White (4,4)) `Maybe.andThen`
-  (fst >> add White (4,6)) `Maybe.andThen`
-  (fst >> add White (6,5)) `Maybe.andThen`
-  (fst >> add Black (4,5)) `Maybe.andThen`
-  (fst >> add White (5,4)) `Maybe.andThen`
-  (fst >> add White (5,6))
 
 partitionKV =
   let partition (k, mv) (ns, js) = case mv of
