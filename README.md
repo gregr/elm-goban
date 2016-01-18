@@ -1,5 +1,7 @@
 # Tools for Go/Igo/Weiqi/Baduk using Elm
 
+Try the [interactive example](http://www.gregrosenblatt.com/elm-goban/)!  Currently, the example implements alternating play and the basic capturing rules.  It allows self-capture and does not detect Ko/Pae.
+
 ## TODO
 
 - variation trees
