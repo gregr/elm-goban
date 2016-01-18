@@ -29,6 +29,11 @@ stoneFormMoved coord = GC.move (sizedCoord coord) << stoneForm
 
 lineTracer = GC.traced (GC.solid Color.black)
 
+scaledSquare sz = let square = GC.square <| toFloat sz
+                      center = GC.filled Color.yellow square
+                      border = GC.outlined (GC.solid Color.black) square
+                  in GC.group [center, border]
+
 boardElement board =
   let ixs = [1 .. board.size]
       cell coord = Maybe.map (stoneFormMoved coord) <| GP.get board coord
@@ -42,9 +47,11 @@ boardElement board =
       vints = List.map vline <| ixs
       --ints = GC.move (offset, offset) << GC.group <| hints ++ vints
       -- TODO: how should star locations be derived?
+      backdrop = scaledSquare <| scaled <| board.size + 1
       stars = GC.group <| List.map starAt [(3,3), (7,3), (7,7), (3,7), (5,5)]
       ints = GC.group <| hints ++ vints
-      all = GC.scale 2 <| GC.move (sizedCoord (-board.size, -board.size)) <| GC.group [ints, stars, stones]
+      movedim = scaled <| toFloat (-board.size - 1) / 2
+      all = GC.scale 1.5 <| GC.group [backdrop, GC.move (movedim, movedim) <| GC.group [ints, stars, stones]]
   in GC.collage 400 400 [all]
 
 -- TODO: coord-clicks signal
