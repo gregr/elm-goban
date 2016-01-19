@@ -89,7 +89,7 @@ cscale = 1.5
 cdim = 20 + round (cscale * cdiam * (cedge + cbfs.margin))
 
 boardElement = let dpf = defaultPositionForm cbfs
-                   form board = GC.collage cdim cdim [GC.scale 1.5 <| dpf board]
+                   form board = GC.collage cdim cdim [GC.scale cscale <| dpf board]
                in form
 
 p2cSpec {edgeSize, margin, stoneDiameter} =
