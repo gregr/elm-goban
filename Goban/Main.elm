@@ -3,19 +3,19 @@ import Goban.UI as GUI
 import Graphics.Element as GE
 import Mouse
 
-update mc { stone, board } =
+update mc { stone, position } =
   let --hoverCoord' = GUI.posToCoord mp
       mcoord = GUI.posToCoord mc
-      (stone', board') = case mcoord `Maybe.andThen` \coord -> GP.add stone coord board of
-                           Nothing -> (stone, board)
+      (stone', position') = case mcoord `Maybe.andThen` \coord -> GP.add stone coord position of
+                           Nothing -> (stone, position)
                            Just (b, _) -> (GP.invertStone stone, b)
-  in { stone = stone', board = board'}
+  in { stone = stone', position = position'}
 
 view pos clickPos = GE.show (GUI.posToCoord pos) `GE.above` GE.show (GUI.posToCoord clickPos) `GE.above` GE.show pos `GE.above` GE.show clickPos
 
-boardState = Signal.foldp update { stone = GP.Black, board = GP.empty GUI.cedge } <| Signal.sampleOn Mouse.clicks Mouse.position
-boardView = Signal.map (\bs -> GUI.boardElement bs.board) boardState
+positionState = Signal.foldp update { stone = GP.Black, position = GP.empty GUI.cedge } <| Signal.sampleOn Mouse.clicks Mouse.position
+positionView = Signal.map (\bs -> GUI.positionElement bs.position) positionState
 mouseView = Signal.map2 view Mouse.position <| Signal.sampleOn Mouse.clicks Mouse.position
 
-main = Signal.map2 GE.above boardView mouseView
+main = Signal.map2 GE.above positionView mouseView
 
