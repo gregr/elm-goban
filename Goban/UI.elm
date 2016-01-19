@@ -83,13 +83,26 @@ defaultPositionForm bfspec =
       form board = GC.group [bf, stonesWith board]
   in form
 
-boardElement = let dpf = defaultPositionForm testBoardFormSpec
-                   form board = GC.collage 400 400 [GC.scale 1.5 <| dpf board]
+cedge = 9
+cw = 40 * cedge
+ch = 40 * cedge
+cscale = 1.5
+cbfs = { testBoardFormSpec | edgeSize = cedge }
+
+boardElement = let dpf = defaultPositionForm cbfs
+                   form board = GC.collage cw ch [GC.scale 1.5 <| dpf board]
                in form
 
-posToCoord (xa, ya) =
-  let trans p = round <| toFloat p / 30
-      x = trans (xa - 80) + 1
-      y = trans (322 - ya) + 1
-      legal p = p >= 1 && p <= 9
-  in if legal x && legal y then Just (x, y) else Nothing
+p2cSpec {edgeSize, margin, stoneDiameter} =
+  let edge = toFloat edgeSize
+      csd = cscale * stoneDiameter
+      trans p = round <| p / csd
+      offset = (cw - csd*(edge - 1)) / 2
+      p2c (xa, ya) =
+        let x = trans (toFloat xa - offset) + 1
+            y = trans (ch - offset - toFloat ya) + 1
+            legal p = p >= 1 && p <= edge
+        in if legal x && legal y then Just (x, y) else Nothing
+  in p2c
+
+posToCoord = p2cSpec cbfs
