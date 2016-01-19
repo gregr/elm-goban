@@ -83,18 +83,6 @@ defaultPositionForm pfspec =
       form pos = GC.group [bf, stonesWith pos]
   in form
 
-cedge = 19
-cdiam = 20
-cpfs = { testPositionFormSpec | edgeSize = cedge, stoneDiameter = cdiam }
-cscale = 1.5
-coffset = 10
-cdim = coffset*2 + round (cscale * cdiam * (cedge + cpfs.margin))
-
-positionElement =
-  let dpf = defaultPositionForm cpfs
-      form pos = GC.collage cdim cdim [GC.scale cscale <| dpf pos]
-  in form
-
 type alias Coord = (Int, Int)
 
 absoluteToCoord : Coord -> Float -> PositionFormSpec -> Coord -> Maybe GP.Coord
@@ -109,5 +97,3 @@ absoluteToCoord (xc, yc) scale {edgeSize, margin, stoneDiameter} =
             legal p = p >= 1 && p <= edgeSize
         in if legal x && legal y then Just (x, y) else Nothing
   in toCoord
-
-posToCoord = absoluteToCoord (coffset, coffset) cscale cpfs
