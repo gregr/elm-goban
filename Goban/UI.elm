@@ -47,17 +47,16 @@ defaultBoardForm {edgeSize, margin, stoneDiameter} =
       star = GC.filled (Color.black) <| GC.circle (stoneDiameter / 6)
       starAt coord = GC.move (scaledCoord coord) star
       stars = GC.group <| List.map starAt <| starCoords edge
-      halflen = scaled <| -(edge + margin) / 2
+      halflen = scaled <| -(edge + 1) / 2
       markings = GC.move (halflen, halflen) <| GC.group [ints, stars]
       all = GC.group [surface, markings]
   in all
 
 defaultStonesForm : BoardFormSpec -> GP.Board -> GC.Form
-defaultStonesForm {edgeSize, margin, stoneDiameter} =
-  let stoneRad = stoneDiameter / 2
-      scaled x = x * stoneDiameter
+defaultStonesForm {edgeSize, stoneDiameter} =
+  let scaled x = x * stoneDiameter
       scaledCoord (x, y) = (scaled <| toFloat x, scaled <| toFloat y)
-      form color = let circle = GC.circle stoneRad
+      form color = let circle = GC.circle <| stoneDiameter / 2
                        center = GC.filled color circle
                        border = GC.outlined (GC.solid Color.black) circle
                    in GC.group [center, border]
@@ -68,7 +67,7 @@ defaultStonesForm {edgeSize, margin, stoneDiameter} =
         GP.White -> white
       stoneFormMoved coord = GC.move (scaledCoord coord) << stoneForm
       ixs = [1 .. edgeSize]
-      halflen = scaled <| -(toFloat edgeSize + margin) / 2
+      halflen = scaled <| -(toFloat edgeSize + 1) / 2
       stonesForm board =
         let cell coord = Maybe.map (stoneFormMoved coord) <| GP.get board coord
             row ypos = List.filterMap (\x -> cell (x, ypos)) ixs
@@ -79,28 +78,28 @@ defaultStonesForm {edgeSize, margin, stoneDiameter} =
 defaultPositionForm : BoardFormSpec -> GP.Board -> GC.Form
 defaultPositionForm bfspec =
   let bf = defaultBoardForm bfspec
-      stonesWith = defaultStonesForm testBoardFormSpec
+      stonesWith = defaultStonesForm bfspec
       form board = GC.group [bf, stonesWith board]
   in form
 
-cedge = 9
-cw = 40 * cedge
-ch = 40 * cedge
+cedge = 19
+cdiam = 20
+cbfs = { testBoardFormSpec | edgeSize = cedge, stoneDiameter = cdiam }
 cscale = 1.5
-cbfs = { testBoardFormSpec | edgeSize = cedge }
+cdim = 20 + round (cscale * cdiam * (cedge + cbfs.margin))
 
 boardElement = let dpf = defaultPositionForm cbfs
-                   form board = GC.collage cw ch [GC.scale 1.5 <| dpf board]
+                   form board = GC.collage cdim cdim [GC.scale 1.5 <| dpf board]
                in form
 
 p2cSpec {edgeSize, margin, stoneDiameter} =
   let edge = toFloat edgeSize
       csd = cscale * stoneDiameter
       trans p = round <| p / csd
-      offset = (cw - csd*(edge - 1)) / 2
+      offset = (toFloat cdim - csd*(edge - 1)) / 2
       p2c (xa, ya) =
         let x = trans (toFloat xa - offset) + 1
-            y = trans (ch - offset - toFloat ya) + 1
+            y = trans (toFloat cdim - offset - toFloat ya) + 1
             legal p = p >= 1 && p <= edge
         in if legal x && legal y then Just (x, y) else Nothing
   in p2c
