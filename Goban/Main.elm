@@ -1,5 +1,6 @@
 import Goban.Position as GP
 import Goban.UI as GUI
+import Goban.Variation as GV
 import Graphics.Collage as GC
 import Graphics.Element as GE
 import Mouse
@@ -18,18 +19,18 @@ positionElement =
 
 posToCoord = GUI.absoluteToCoord (coffset, coffset) cscale cpfs
 
-update mc { stone, position } =
-  let mcoord = posToCoord mc
-      (stone', position') = case mcoord `Maybe.andThen` \coord -> GP.add stone coord position of
-                           Nothing -> (stone, position)
-                           Just (b, _) -> (GP.invertStone stone, b)
-  in { stone = stone', position = position'}
-
 view pos clickPos = GE.show (posToCoord pos) `GE.above` GE.show (posToCoord clickPos) `GE.above` GE.show pos `GE.above` GE.show clickPos
-
-positionState = Signal.foldp update { stone = GP.Black, position = GP.empty cedge } <| Signal.sampleOn Mouse.clicks Mouse.position
-positionView = Signal.map (\ps -> positionElement ps.position) positionState
 mouseView = Signal.map2 view Mouse.position <| Signal.sampleOn Mouse.clicks Mouse.position
 
-main = Signal.map2 GE.above positionView mouseView
+update mc { stone, vcur } =
+  let (GV.VTree vt) = vcur.focus
+      mcoord = posToCoord mc
+      (stone', vcur') = case mcoord `Maybe.andThen` \coord -> GP.add stone coord vt.position of
+                              Nothing -> (stone, vcur)
+                              Just (pos, _) -> (GP.invertStone stone, GV.add pos vcur)
+  in { stone = stone', vcur = vcur' }
 
+variationState = Signal.foldp update { stone = GP.Black, vcur = GV.empty cedge } <| Signal.sampleOn Mouse.clicks Mouse.position
+variationView = Signal.map (\vs -> positionElement <| GV.get vs.vcur) variationState
+
+main = Signal.map2 GE.above variationView mouseView
