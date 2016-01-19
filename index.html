@@ -6589,6 +6589,7 @@ Elm.Goban.Position.make = function (_elm) {
       });
       return A2($List.foldr,partition,{ctor: "_Tuple2",_0: _U.list([]),_1: _U.list([])});
    }();
+   var remove = F2(function (coord,board) {    return _U.update(board,{grid: A2($Dict.remove,coord,board.grid)});});
    var get = F2(function (board,coord) {    return A2($Dict.get,coord,board.grid);});
    var captured = F3(function (board,stone,coords) {
       var friendly = function (_p12) {    var _p13 = _p12;return _U.eq(stone,_p13._1);};
@@ -6636,65 +6637,47 @@ Elm.Goban.Position.make = function (_elm) {
       var alive = _p24._1;
       return A2($Set.diff,seen,alive);
    });
-   var remove = F2(function (coord,board) {    return _U.update(board,{grid: A2($Dict.remove,coord,board.grid)});});
+   var within = F2(function (_p26,_p25) {
+      var _p27 = _p26;
+      var _p28 = _p25;
+      var posOn = function (p) {    return _U.cmp(p,1) > -1 && _U.cmp(p,_p27.size) < 1;};
+      return posOn(_p28._0) && posOn(_p28._1);
+   });
    var empty = function (size) {    return {size: size,grid: $Dict.empty};};
    var Board = F2(function (a,b) {    return {size: a,grid: b};});
    var White = {ctor: "White"};
    var Black = {ctor: "Black"};
-   var invertStone = function (stone) {    var _p25 = stone;if (_p25.ctor === "Black") {    return White;} else {    return Black;}};
+   var invertStone = function (stone) {    var _p29 = stone;if (_p29.ctor === "Black") {    return White;} else {    return Black;}};
    var add = F3(function (stone,coord,board) {
-      var _p26 = A2(get,board,coord);
-      if (_p26.ctor === "Just") {
-            return $Maybe.Nothing;
-         } else {
-            return $Maybe.Just(function () {
-               var stone$ = invertStone(stone);
-               var board$ = _U.update(board,{grid: A3($Dict.insert,coord,stone,board.grid)});
-               var removeCaptured = F2(function (stone,coords) {
-                  var caps = A3(captured,board$,stone,coords);
-                  return _U.eq($Set.size(caps),0) ? $Maybe.Nothing : $Maybe.Just({ctor: "_Tuple2"
-                                                                                 ,_0: A3($Set.foldl,remove,board$,caps)
-                                                                                 ,_1: $Maybe.Just({ctor: "_Tuple2",_0: stone,_1: caps})});
-               });
-               var adjs = A2(adjacent,board.size,coord);
-               var _p27 = A2(removeCaptured,stone$,adjs);
-               if (_p27.ctor === "Just") {
-                     return _p27._0;
-                  } else {
-                     var _p28 = A2(removeCaptured,stone,_U.list([coord]));
-                     if (_p28.ctor === "Just") {
-                           return _p28._0;
+      if ($Basics.not(A2(within,board,coord))) return $Maybe.Nothing; else {
+            var _p30 = A2(get,board,coord);
+            if (_p30.ctor === "Just") {
+                  return $Maybe.Nothing;
+               } else {
+                  return $Maybe.Just(function () {
+                     var stone$ = invertStone(stone);
+                     var board$ = _U.update(board,{grid: A3($Dict.insert,coord,stone,board.grid)});
+                     var removeCaptured = F2(function (stone,coords) {
+                        var caps = A3(captured,board$,stone,coords);
+                        return _U.eq($Set.size(caps),0) ? $Maybe.Nothing : $Maybe.Just({ctor: "_Tuple2"
+                                                                                       ,_0: A3($Set.foldl,remove,board$,caps)
+                                                                                       ,_1: $Maybe.Just({ctor: "_Tuple2",_0: stone,_1: caps})});
+                     });
+                     var adjs = A2(adjacent,board.size,coord);
+                     var _p31 = A2(removeCaptured,stone$,adjs);
+                     if (_p31.ctor === "Just") {
+                           return _p31._0;
                         } else {
-                           return {ctor: "_Tuple2",_0: board$,_1: $Maybe.Nothing};
+                           var _p32 = A2(removeCaptured,stone,_U.list([coord]));
+                           if (_p32.ctor === "Just") {
+                                 return _p32._0;
+                              } else {
+                                 return {ctor: "_Tuple2",_0: board$,_1: $Maybe.Nothing};
+                              }
                         }
-                  }
-            }());
+                  }());
+               }
          }
-   });
-   var testb = A2($Maybe.andThen,
-   A2($Maybe.andThen,
-   A2($Maybe.andThen,
-   A2($Maybe.andThen,
-   A2($Maybe.andThen,
-   A2($Maybe.andThen,
-   A3(add,Black,{ctor: "_Tuple2",_0: 5,_1: 5},empty(9)),
-   function (_p29) {
-      return A3(add,White,{ctor: "_Tuple2",_0: 3,_1: 5},$Basics.fst(_p29));
-   }),
-   function (_p30) {
-      return A3(add,White,{ctor: "_Tuple2",_0: 4,_1: 6},$Basics.fst(_p30));
-   }),
-   function (_p31) {
-      return A3(add,White,{ctor: "_Tuple2",_0: 6,_1: 5},$Basics.fst(_p31));
-   }),
-   function (_p32) {
-      return A3(add,Black,{ctor: "_Tuple2",_0: 4,_1: 5},$Basics.fst(_p32));
-   }),
-   function (_p33) {
-      return A3(add,White,{ctor: "_Tuple2",_0: 5,_1: 4},$Basics.fst(_p33));
-   }),
-   function (_p34) {
-      return A3(add,White,{ctor: "_Tuple2",_0: 5,_1: 6},$Basics.fst(_p34));
    });
    return _elm.Goban.Position.values = {_op: _op
                                        ,Black: Black
@@ -6702,11 +6685,11 @@ Elm.Goban.Position.make = function (_elm) {
                                        ,invertStone: invertStone
                                        ,Board: Board
                                        ,empty: empty
-                                       ,remove: remove
+                                       ,within: within
                                        ,get: get
-                                       ,captured: captured
+                                       ,remove: remove
                                        ,add: add
-                                       ,testb: testb
+                                       ,captured: captured
                                        ,partitionKV: partitionKV
                                        ,adjacent: adjacent};
 };Elm.Goban = Elm.Goban || {};
@@ -6727,80 +6710,122 @@ Elm.Goban.UI.make = function (_elm) {
    $Result = Elm.Result.make(_elm),
    $Signal = Elm.Signal.make(_elm);
    var _op = {};
-   var scaledSquare = function (sz) {
-      var square = $Graphics$Collage.square($Basics.toFloat(sz));
-      var center = A2($Graphics$Collage.filled,$Color.yellow,square);
-      var border = A2($Graphics$Collage.outlined,$Graphics$Collage.solid($Color.black),square);
-      return $Graphics$Collage.group(_U.list([center,border]));
-   };
-   var lineTracer = $Graphics$Collage.traced($Graphics$Collage.solid($Color.black));
-   var stoneColor = function (st) {    var _p0 = st;if (_p0.ctor === "Black") {    return $Color.black;} else {    return $Color.white;}};
-   var stoneRad = 10;
-   var scaled = function (x) {    return x * stoneRad * 2;};
-   var sizedCoord = function (_p1) {    var _p2 = _p1;return {ctor: "_Tuple2",_0: scaled($Basics.toFloat(_p2._0)),_1: scaled($Basics.toFloat(_p2._1))};};
-   var scaledSeg = F2(function (c0,c1) {    return A2($Graphics$Collage.segment,sizedCoord(c0),sizedCoord(c1));});
-   var posToCoord = function (_p3) {
-      var _p4 = _p3;
-      var legal = function (p) {    return _U.cmp(p,1) > -1 && _U.cmp(p,9) < 1;};
-      var trans = function (p) {    return $Basics.round($Basics.toFloat(p) / scaled(1.5));};
-      var x = trans(_p4._0 - 80) + 1;
-      var y = trans(322 - _p4._1) + 1;
-      return legal(x) && legal(y) ? $Maybe.Just({ctor: "_Tuple2",_0: x,_1: y}) : $Maybe.Nothing;
-   };
-   var star = A2($Graphics$Collage.filled,$Color.black,$Graphics$Collage.circle(stoneRad / 3));
-   var starAt = function (coord) {    return A2($Graphics$Collage.move,sizedCoord(coord),star);};
-   var stoneForm = function (st) {
-      var circle = $Graphics$Collage.circle(stoneRad);
-      var border = A2($Graphics$Collage.outlined,$Graphics$Collage.solid($Color.black),circle);
-      var color = stoneColor(st);
-      var center = A2($Graphics$Collage.filled,color,circle);
-      return $Graphics$Collage.group(_U.list([center,border]));
-   };
-   var stoneFormMoved = function (coord) {    return function (_p5) {    return A2($Graphics$Collage.move,sizedCoord(coord),stoneForm(_p5));};};
-   var boardElement = function (board) {
-      var movedim = scaled($Basics.toFloat(0 - board.size - 1) / 2);
-      var stars = $Graphics$Collage.group(A2($List.map,
-      starAt,
-      _U.list([{ctor: "_Tuple2",_0: 3,_1: 3}
-              ,{ctor: "_Tuple2",_0: 7,_1: 3}
-              ,{ctor: "_Tuple2",_0: 7,_1: 7}
-              ,{ctor: "_Tuple2",_0: 3,_1: 7}
-              ,{ctor: "_Tuple2",_0: 5,_1: 5}])));
-      var backdrop = scaledSquare(scaled(board.size + 1));
-      var dim = board.size;
-      var hline = function (y) {    return lineTracer(A2(scaledSeg,{ctor: "_Tuple2",_0: 1,_1: y},{ctor: "_Tuple2",_0: dim,_1: y}));};
-      var vline = function (x) {    return lineTracer(A2(scaledSeg,{ctor: "_Tuple2",_0: x,_1: 1},{ctor: "_Tuple2",_0: x,_1: dim}));};
-      var offset = stoneRad;
-      var cell = function (coord) {    return A2($Maybe.map,stoneFormMoved(coord),A2($Goban$Position.get,board,coord));};
-      var ixs = _U.range(1,board.size);
-      var row = function (ypos) {
-         return A2($List.filterMap,$Basics.identity,A2($List.map,function (x) {    return cell({ctor: "_Tuple2",_0: x,_1: ypos});},ixs));
+   var cscale = 1.5;
+   var cdiam = 20;
+   var cedge = 19;
+   var defaultStonesForm = function (_p0) {
+      var _p1 = _p0;
+      var _p7 = _p1.stoneDiameter;
+      var _p6 = _p1.edgeSize;
+      var ixs = _U.range(1,_p6);
+      var form = function (color) {
+         var circle = $Graphics$Collage.circle(_p7 / 2);
+         var center = A2($Graphics$Collage.filled,color,circle);
+         var border = A2($Graphics$Collage.outlined,$Graphics$Collage.solid($Color.black),circle);
+         return $Graphics$Collage.group(_U.list([center,border]));
       };
-      var stones = function (_p6) {    return $Graphics$Collage.group($List.concat(_p6));}(A2($List.map,row,ixs));
-      var hints = A2($List.map,hline,ixs);
-      var vints = A2($List.map,vline,ixs);
-      var ints = $Graphics$Collage.group(A2($Basics._op["++"],hints,vints));
-      var all = A2($Graphics$Collage.scale,
-      1.5,
-      $Graphics$Collage.group(_U.list([backdrop
-                                      ,A2($Graphics$Collage.move,
-                                      {ctor: "_Tuple2",_0: movedim,_1: movedim},
-                                      $Graphics$Collage.group(_U.list([ints,stars,stones])))])));
-      return A3($Graphics$Collage.collage,400,400,_U.list([all]));
+      var black = form($Color.black);
+      var white = form($Color.white);
+      var stoneForm = function (st) {    var _p2 = st;if (_p2.ctor === "Black") {    return black;} else {    return white;}};
+      var scaled = function (x) {    return x * _p7;};
+      var scaledCoord = function (_p3) {    var _p4 = _p3;return {ctor: "_Tuple2",_0: scaled($Basics.toFloat(_p4._0)),_1: scaled($Basics.toFloat(_p4._1))};};
+      var stoneFormMoved = function (coord) {    return function (_p5) {    return A2($Graphics$Collage.move,scaledCoord(coord),stoneForm(_p5));};};
+      var halflen = scaled((0 - ($Basics.toFloat(_p6) + 1)) / 2);
+      var stonesForm = function (board) {
+         var cell = function (coord) {    return A2($Maybe.map,stoneFormMoved(coord),A2($Goban$Position.get,board,coord));};
+         var row = function (ypos) {    return A2($List.filterMap,function (x) {    return cell({ctor: "_Tuple2",_0: x,_1: ypos});},ixs);};
+         var stones = $Graphics$Collage.group($List.concat(A2($List.map,row,ixs)));
+         return A2($Graphics$Collage.move,{ctor: "_Tuple2",_0: halflen,_1: halflen},stones);
+      };
+      return stonesForm;
    };
+   var starCoords = function (edgeSize) {
+      var h0 = _U.cmp(edgeSize,12) > -1 ? 4 : 3;
+      var h1 = edgeSize - h0 + 1;
+      var corners = _U.cmp(edgeSize,3 * h0) > -1 ? _U.list([{ctor: "_Tuple2",_0: h0,_1: h0}
+                                                           ,{ctor: "_Tuple2",_0: h0,_1: h1}
+                                                           ,{ctor: "_Tuple2",_0: h1,_1: h0}
+                                                           ,{ctor: "_Tuple2",_0: h1,_1: h1}]) : _U.list([]);
+      var mid = (edgeSize + 1) / 2;
+      var sides = _U.eq(A2($Basics._op["%"],edgeSize,2),1) && _U.cmp(edgeSize,4 * h0 - 1) > -1 ? _U.list([{ctor: "_Tuple2",_0: h0,_1: mid}
+                                                                                                         ,{ctor: "_Tuple2",_0: h1,_1: mid}
+                                                                                                         ,{ctor: "_Tuple2",_0: mid,_1: h0}
+                                                                                                         ,{ctor: "_Tuple2",_0: mid,_1: h1}]) : _U.list([]);
+      var center = _U.eq(A2($Basics._op["%"],edgeSize,2),1) ? _U.list([{ctor: "_Tuple2",_0: mid,_1: mid}]) : _U.list([]);
+      return A2($Basics._op["++"],corners,A2($Basics._op["++"],sides,center));
+   };
+   var defaultBoardForm = function (_p8) {
+      var _p9 = _p8;
+      var _p12 = _p9.stoneDiameter;
+      var star = A2($Graphics$Collage.filled,$Color.black,$Graphics$Collage.circle(_p12 / 6));
+      var scaled = function (x) {    return x * _p12;};
+      var scaledCoord = function (_p10) {    var _p11 = _p10;return {ctor: "_Tuple2",_0: scaled(_p11._0),_1: scaled(_p11._1)};};
+      var line = F2(function (c0,c1) {
+         return A2($Graphics$Collage.traced,$Graphics$Collage.solid($Color.black),A2($Graphics$Collage.segment,scaledCoord(c0),scaledCoord(c1)));
+      });
+      var starAt = function (coord) {    return A2($Graphics$Collage.move,scaledCoord(coord),star);};
+      var edge = $Basics.toFloat(_p9.edgeSize);
+      var surface = function () {
+         var square = $Graphics$Collage.square(scaled(edge + _p9.margin));
+         var center = A2($Graphics$Collage.filled,$Color.yellow,square);
+         var border = A2($Graphics$Collage.outlined,$Graphics$Collage.solid($Color.black),square);
+         return $Graphics$Collage.group(_U.list([center,border]));
+      }();
+      var hline = function (y) {    return A2(line,{ctor: "_Tuple2",_0: 1,_1: y},{ctor: "_Tuple2",_0: edge,_1: y});};
+      var vline = function (x) {    return A2(line,{ctor: "_Tuple2",_0: x,_1: 1},{ctor: "_Tuple2",_0: x,_1: edge});};
+      var ixs = _U.range(1,edge);
+      var ints = $Graphics$Collage.group(A2($Basics._op["++"],A2($List.map,hline,ixs),A2($List.map,vline,ixs)));
+      var stars = $Graphics$Collage.group(A2($List.map,starAt,starCoords(edge)));
+      var halflen = scaled((0 - (edge + 1)) / 2);
+      var markings = A2($Graphics$Collage.move,{ctor: "_Tuple2",_0: halflen,_1: halflen},$Graphics$Collage.group(_U.list([ints,stars])));
+      var all = $Graphics$Collage.group(_U.list([surface,markings]));
+      return all;
+   };
+   var defaultPositionForm = function (bfspec) {
+      var stonesWith = defaultStonesForm(bfspec);
+      var bf = defaultBoardForm(bfspec);
+      var form = function (board) {    return $Graphics$Collage.group(_U.list([bf,stonesWith(board)]));};
+      return form;
+   };
+   var testBoardFormSpec = {edgeSize: 9,margin: 1,stoneDiameter: 20};
+   var cbfs = _U.update(testBoardFormSpec,{edgeSize: cedge,stoneDiameter: cdiam});
+   var cdim = 20 + $Basics.round(cscale * cdiam * (cedge + cbfs.margin));
+   var p2cSpec = function (_p13) {
+      var _p14 = _p13;
+      var csd = cscale * _p14.stoneDiameter;
+      var trans = function (p) {    return $Basics.round(p / csd);};
+      var edge = $Basics.toFloat(_p14.edgeSize);
+      var offset = ($Basics.toFloat(cdim) - csd * (edge - 1)) / 2;
+      var p2c = function (_p15) {
+         var _p16 = _p15;
+         var legal = function (p) {    return _U.cmp(p,1) > -1 && _U.cmp(p,edge) < 1;};
+         var y = trans($Basics.toFloat(cdim) - offset - $Basics.toFloat(_p16._1)) + 1;
+         var x = trans($Basics.toFloat(_p16._0) - offset) + 1;
+         return legal(x) && legal(y) ? $Maybe.Just({ctor: "_Tuple2",_0: x,_1: y}) : $Maybe.Nothing;
+      };
+      return p2c;
+   };
+   var boardElement = function () {
+      var dpf = defaultPositionForm(cbfs);
+      var form = function (board) {    return A3($Graphics$Collage.collage,cdim,cdim,_U.list([A2($Graphics$Collage.scale,1.5,dpf(board))]));};
+      return form;
+   }();
+   var posToCoord = p2cSpec(cbfs);
+   var BoardFormSpec = F3(function (a,b,c) {    return {edgeSize: a,margin: b,stoneDiameter: c};});
    return _elm.Goban.UI.values = {_op: _op
-                                 ,stoneRad: stoneRad
-                                 ,scaled: scaled
-                                 ,star: star
-                                 ,stoneColor: stoneColor
-                                 ,stoneForm: stoneForm
-                                 ,sizedCoord: sizedCoord
-                                 ,scaledSeg: scaledSeg
-                                 ,starAt: starAt
-                                 ,stoneFormMoved: stoneFormMoved
-                                 ,lineTracer: lineTracer
-                                 ,scaledSquare: scaledSquare
+                                 ,BoardFormSpec: BoardFormSpec
+                                 ,testBoardFormSpec: testBoardFormSpec
+                                 ,starCoords: starCoords
+                                 ,defaultBoardForm: defaultBoardForm
+                                 ,defaultStonesForm: defaultStonesForm
+                                 ,defaultPositionForm: defaultPositionForm
+                                 ,cedge: cedge
+                                 ,cdiam: cdiam
+                                 ,cbfs: cbfs
+                                 ,cscale: cscale
+                                 ,cdim: cdim
                                  ,boardElement: boardElement
+                                 ,p2cSpec: p2cSpec
                                  ,posToCoord: posToCoord};
 };Elm.Main = Elm.Main || {};
 Elm.Main.make = function (_elm) {
@@ -6844,7 +6869,10 @@ Elm.Main.make = function (_elm) {
       var board$ = _p2._1;
       return {stone: stone$,board: board$};
    });
-   var boardState = A3($Signal.foldp,update,{stone: $Goban$Position.Black,board: $Goban$Position.empty(9)},A2($Signal.sampleOn,$Mouse.clicks,$Mouse.position));
+   var boardState = A3($Signal.foldp,
+   update,
+   {stone: $Goban$Position.Black,board: $Goban$Position.empty($Goban$UI.cedge)},
+   A2($Signal.sampleOn,$Mouse.clicks,$Mouse.position));
    var boardView = A2($Signal.map,function (bs) {    return $Goban$UI.boardElement(bs.board);},boardState);
    var main = A3($Signal.map2,$Graphics$Element.above,boardView,mouseView);
    return _elm.Main.values = {_op: _op,update: update,view: view,boardState: boardState,boardView: boardView,mouseView: mouseView,main: main};
