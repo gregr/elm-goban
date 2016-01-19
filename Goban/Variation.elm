@@ -33,10 +33,23 @@ withFocus op cursor =
   op cursor.focus `Maybe.andThen`
   \focus -> Just { cursor | focus = focus }
 
+get : VCursor -> GP.Position
+get {focus} = let (VTree {position}) = focus
+              in position
+
 edit : (GP.Position -> GP.Position) -> VCursor -> VCursor
 edit op cursor =
   let trans (VTree vt) = VTree { vt | position = op vt.position }
   in { cursor | focus = trans cursor.focus }
+
+put : GP.Position -> VCursor -> VCursor
+put pos = edit (\_ -> pos)
+
+-- TODO: search for existing alt with same position
+add : GP.Position -> VCursor -> VCursor
+add pos cursor =
+  let cursor' = newAlt (VTree { position = pos, children = Nothing }) cursor
+  in Maybe.withDefault cursor' <| nextPos cursor'
 
 newAlt : VTree -> VCursor -> VCursor
 newAlt alt cursor =
