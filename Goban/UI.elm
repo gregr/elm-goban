@@ -87,23 +87,27 @@ cedge = 19
 cdiam = 20
 cpfs = { testPositionFormSpec | edgeSize = cedge, stoneDiameter = cdiam }
 cscale = 1.5
-cdim = 20 + round (cscale * cdiam * (cedge + cpfs.margin))
+coffset = 10
+cdim = coffset*2 + round (cscale * cdiam * (cedge + cpfs.margin))
 
 positionElement =
   let dpf = defaultPositionForm cpfs
       form pos = GC.collage cdim cdim [GC.scale cscale <| dpf pos]
   in form
 
-p2cSpec {edgeSize, margin, stoneDiameter} =
-  let edge = toFloat edgeSize
-      csd = cscale * stoneDiameter
-      trans p = round <| p / csd
-      offset = (toFloat cdim - csd*(edge - 1)) / 2
-      p2c (xa, ya) =
-        let x = trans (toFloat xa - offset) + 1
-            y = trans (toFloat cdim - offset - toFloat ya) + 1
-            legal p = p >= 1 && p <= edge
-        in if legal x && legal y then Just (x, y) else Nothing
-  in p2c
+type alias Coord = (Int, Int)
 
-posToCoord = p2cSpec cpfs
+absoluteToCoord : Coord -> Float -> PositionFormSpec -> Coord -> Maybe GP.Coord
+absoluteToCoord (xc, yc) scale {edgeSize, margin, stoneDiameter} =
+  let csd = scale * stoneDiameter
+      trans delta = 1 + (round <| delta / csd)
+      xo = toFloat xc + csd*(margin + 1)/2
+      yo = toFloat yc + csd*((margin + 1)/2 + toFloat edgeSize - 1)
+      toCoord (xa, ya) =
+        let x = trans (toFloat xa - xo)
+            y = trans (yo - toFloat ya)
+            legal p = p >= 1 && p <= edgeSize
+        in if legal x && legal y then Just (x, y) else Nothing
+  in toCoord
+
+posToCoord = absoluteToCoord (coffset, coffset) cscale cpfs
