@@ -17,11 +17,35 @@ type alias Board = { size : Int, grid : Dict Coord Stone }
 empty : Int -> Board
 empty size = { size = size, grid = Dict.empty }
 
-remove : Coord -> Board -> Board
-remove coord board = { board | grid = Dict.remove coord board.grid }
+within : Board -> Coord -> Bool
+within {size} (x, y) =
+  let posOn p = p >= 1 && p <= size
+  in posOn x && posOn y
 
 get : Board -> Coord -> Maybe Stone
 get board coord = Dict.get coord board.grid
+
+remove : Coord -> Board -> Board
+remove coord board = { board | grid = Dict.remove coord board.grid }
+
+add : Stone -> Coord -> Board -> Maybe (Board, Maybe (Stone, Set Coord))
+add stone coord board =
+  if not <| within board coord then Nothing
+  else case get board coord of
+    Just _ -> Nothing
+    Nothing -> Just <|
+    let adjs = adjacent board.size coord
+        board' = { board | grid = Dict.insert coord stone board.grid }
+        stone' = invertStone stone
+        removeCaptured stone coords =
+          let caps = captured board' stone coords
+          in if Set.size caps == 0 then Nothing
+                else Just (Set.foldl remove board' caps, Just (stone, caps))
+          in case removeCaptured stone' adjs of
+            Just result -> result
+            Nothing -> case removeCaptured stone [coord] of
+              Just result -> result
+              Nothing -> (board', Nothing)
 
 captured board stone coords =
   let friendly (_, s) = stone == s
@@ -45,23 +69,6 @@ captured board stone coords =
                      in captured1 coord (acc', Set.singleton coord)
       (seen, alive) = List.foldl captured0 (Set.empty, Set.empty) coords
   in Set.diff seen alive
-
-add : Stone -> Coord -> Board -> Maybe (Board, Maybe (Stone, Set Coord))
-add stone coord board = case get board coord of
-  Just _ -> Nothing
-  Nothing -> Just <|
-    let adjs = adjacent board.size coord
-        board' = { board | grid = Dict.insert coord stone board.grid }
-        stone' = invertStone stone
-        removeCaptured stone coords =
-          let caps = captured board' stone coords
-          in if Set.size caps == 0 then Nothing
-             else Just (Set.foldl remove board' caps, Just (stone, caps))
-    in case removeCaptured stone' adjs of
-      Just result -> result
-      Nothing -> case removeCaptured stone [coord] of
-        Just result -> result
-        Nothing -> (board', Nothing)
 
 partitionKV =
   let partition (k, mv) (ns, js) = case mv of
