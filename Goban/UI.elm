@@ -6,7 +6,10 @@ import Goban.Position as GP
 import Color
 import Graphics.Collage as GC
 
-type alias BoardFormSpec = { edgeSize : Int, margin : Float, stoneDiameter : Float }
+type alias BoardFormSpec =
+  { edgeSize : Int
+  , margin : Float
+  , stoneDiameter : Float }
 testBoardFormSpec = { edgeSize = 9, margin = 1, stoneDiameter = 20 }
 
 defaultBoardForm : BoardFormSpec -> GC.Form
@@ -30,7 +33,8 @@ defaultBoardForm {edgeSize, margin, stoneDiameter} =
       starAt coord = GC.move (scaledCoord coord) star
       stars = GC.group <| List.map starAt [(3,3), (7,3), (7,7), (3,7), (5,5)]
       halflen = scaled <| -(edge + margin) / 2
-      all = GC.group [surface, GC.move (halflen, halflen) <| GC.group [ints, stars]]
+      markings = GC.move (halflen, halflen) <| GC.group [ints, stars]
+      all = GC.group [surface, markings]
   in all
 
 defaultStonesForm : BoardFormSpec -> GP.Board -> GC.Form
@@ -57,14 +61,16 @@ defaultStonesForm {edgeSize, margin, stoneDiameter} =
         in GC.move (halflen, halflen) stones
   in stonesForm
 
+defaultPositionForm : BoardFormSpec -> GP.Board -> GC.Form
+defaultPositionForm bfspec =
+  let bf = defaultBoardForm bfspec
+      stonesWith = defaultStonesForm testBoardFormSpec
+      form board = GC.group [bf, stonesWith board]
+  in form
 
--- TODO: parametric scaling
-
-boardElement board =
-  let bf = defaultBoardForm testBoardFormSpec
-      stones = defaultStonesForm testBoardFormSpec board
-      all = GC.scale 1.5 <| GC.group [bf, stones]
-  in GC.collage 400 400 [all]
+boardElement = let dpf = defaultPositionForm testBoardFormSpec
+                   form board = GC.collage 400 400 [GC.scale 1.5 <| dpf board]
+               in form
 
 posToCoord (xa, ya) =
   let trans p = round <| toFloat p / 30
