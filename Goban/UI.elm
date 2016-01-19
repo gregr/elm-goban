@@ -10,7 +10,23 @@ type alias BoardFormSpec =
   { edgeSize : Int
   , margin : Float
   , stoneDiameter : Float }
+
+testBoardFormSpec : BoardFormSpec
 testBoardFormSpec = { edgeSize = 9, margin = 1, stoneDiameter = 20 }
+
+starCoords : number -> List (Float, Float)
+starCoords edgeSize =
+  let mid = (edgeSize + 1) / 2
+      h0 = if edgeSize >= 12 then 4 else 3
+      h1 = edgeSize - h0 + 1
+      corners = if edgeSize >= 3*h0
+                then [(h0, h0), (h0, h1), (h1, h0), (h1, h1)]
+                else []
+      sides = if edgeSize % 2 == 1 && edgeSize >= 4*h0 - 1
+              then [(h0, mid), (h1, mid), (mid, h0), (mid, h1)]
+              else []
+      center = if edgeSize % 2 == 1 then [(mid, mid)] else []
+  in corners ++ sides ++ center
 
 defaultBoardForm : BoardFormSpec -> GC.Form
 defaultBoardForm {edgeSize, margin, stoneDiameter} =
@@ -28,10 +44,9 @@ defaultBoardForm {edgeSize, margin, stoneDiameter} =
       vline x = line (x, 1) (x, edge)
       ixs = [1..edge]
       ints = GC.group <| List.map hline ixs ++ List.map vline ixs
-      -- TODO: how should star locations be derived?
       star = GC.filled (Color.black) <| GC.circle (stoneDiameter / 6)
       starAt coord = GC.move (scaledCoord coord) star
-      stars = GC.group <| List.map starAt [(3,3), (7,3), (7,7), (3,7), (5,5)]
+      stars = GC.group <| List.map starAt <| starCoords edge
       halflen = scaled <| -(edge + margin) / 2
       markings = GC.move (halflen, halflen) <| GC.group [ints, stars]
       all = GC.group [surface, markings]
