@@ -85,7 +85,9 @@ nextAlt =
         \{current, prev, next} -> case next of
           [] -> Nothing
           new::next ->
-            let alts = Just { current = new, prev = new::prev, next = next }
+            let alts = Just { current = new
+                            , prev = current::prev
+                            , next = next }
             in Just <| VTree { vt | children = alts }
   in withFocus nextAltVT
 
@@ -96,6 +98,8 @@ prevAlt =
         \{current, prev, next} -> case prev of
           [] -> Nothing
           new::prev ->
-            let alts = Just { current = new, prev = prev, next = new::next }
+            let alts = Just { current = new
+                            , prev = prev
+                            , next = current::next }
             in Just <| VTree { vt | children = alts }
   in withFocus prevAltVT
