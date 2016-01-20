@@ -22,6 +22,7 @@ posToCoord = GUI.absoluteToCoord (coffset, coffset) cscale cpfs
 
 view pos clickPos = GE.show (posToCoord pos) `GE.above` GE.show (posToCoord clickPos) `GE.above` GE.show pos `GE.above` GE.show clickPos
 mouseView = Signal.map2 view Mouse.position <| Signal.sampleOn Mouse.clicks Mouse.position
+arrowView = Signal.map GE.show <| Keyboard.arrows
 
 placeStone mc { stone, vcur } =
   let (GV.VTree vt) = vcur.focus
@@ -57,4 +58,4 @@ input = Signal.merge iclicks iarrows
 variationState = Signal.foldp update { stone = GP.Black, vcur = GV.empty cedge } input
 variationView = Signal.map (\vs -> positionElement <| GV.get vs.vcur) variationState
 
-main = Signal.map2 GE.above variationView mouseView
+main = Signal.map2 GE.above variationView <| Signal.map2 GE.above arrowView mouseView
