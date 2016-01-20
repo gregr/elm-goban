@@ -5,6 +5,7 @@ import Graphics.Collage as GC
 import Graphics.Element as GE
 import Keyboard
 import Mouse
+import Text
 
 cedge = 19
 cdiam = 20
@@ -50,6 +51,22 @@ update gi = case gi of
   IClick mc -> placeStone mc
   IArrow arr -> navigateVariations arr
 
+forwardMoveCount (GV.VTree {children}) =
+  Maybe.withDefault 0 <|
+  Maybe.map ((\n -> n + 1) << forwardMoveCount << .current) children
+
+altCounts (GV.VTree {children}) = case children of
+  Nothing -> (0, 0)
+  Just {prev, next} -> (List.length prev, List.length next)
+
+variationInfo vs =
+  let currentCount = List.length vs.vcur.ancestors
+      totalCount = currentCount + forwardMoveCount vs.vcur.focus
+      (prevCount, nextCount) = altCounts vs.vcur.focus
+      moveInfo = GE.leftAligned <| Text.fromString <| "Move " ++ toString currentCount ++ " of " ++ toString totalCount
+      altInfo = GE.leftAligned <| Text.fromString <| "Variation " ++ toString (prevCount + 1) ++ " of " ++ toString (prevCount + 1 + nextCount)
+  in moveInfo `GE.above` altInfo
+
 type GameInput = IClick GUI.Coord | IArrow { x : Int, y : Int }
 iclicks = Signal.map IClick <| Signal.sampleOn Mouse.clicks Mouse.position
 iarrows = Signal.map IArrow Keyboard.arrows
@@ -57,5 +74,6 @@ input = Signal.merge iclicks iarrows
 
 variationState = Signal.foldp update { stone = GP.Black, vcur = GV.empty cedge } input
 variationView = Signal.map (\vs -> positionElement <| GV.get vs.vcur) variationState
+variationInfoView = Signal.map variationInfo variationState
 
-main = Signal.map2 GE.above variationView <| Signal.map2 GE.above arrowView mouseView
+main = Signal.map2 GE.above variationView <| Signal.map2 GE.above variationInfoView <| Signal.map2 GE.above arrowView mouseView
