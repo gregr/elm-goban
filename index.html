@@ -6490,6 +6490,114 @@ Elm.Set.make = function (_elm) {
                             ,diff: diff
                             ,toList: toList
                             ,fromList: fromList};
+};Elm.Native.Keyboard = {};
+
+Elm.Native.Keyboard.make = function(localRuntime) {
+	localRuntime.Native = localRuntime.Native || {};
+	localRuntime.Native.Keyboard = localRuntime.Native.Keyboard || {};
+	if (localRuntime.Native.Keyboard.values)
+	{
+		return localRuntime.Native.Keyboard.values;
+	}
+
+	var NS = Elm.Native.Signal.make(localRuntime);
+
+
+	function keyEvent(event)
+	{
+		return {
+			alt: event.altKey,
+			meta: event.metaKey,
+			keyCode: event.keyCode
+		};
+	}
+
+
+	function keyStream(node, eventName, handler)
+	{
+		var stream = NS.input(eventName, { alt: false, meta: false, keyCode: 0 });
+
+		localRuntime.addListener([stream.id], node, eventName, function(e) {
+			localRuntime.notify(stream.id, handler(e));
+		});
+
+		return stream;
+	}
+
+	var downs = keyStream(document, 'keydown', keyEvent);
+	var ups = keyStream(document, 'keyup', keyEvent);
+	var presses = keyStream(document, 'keypress', keyEvent);
+	var blurs = keyStream(window, 'blur', function() { return null; });
+
+
+	return localRuntime.Native.Keyboard.values = {
+		downs: downs,
+		ups: ups,
+		blurs: blurs,
+		presses: presses
+	};
+};
+Elm.Keyboard = Elm.Keyboard || {};
+Elm.Keyboard.make = function (_elm) {
+   "use strict";
+   _elm.Keyboard = _elm.Keyboard || {};
+   if (_elm.Keyboard.values) return _elm.Keyboard.values;
+   var _U = Elm.Native.Utils.make(_elm),
+   $Basics = Elm.Basics.make(_elm),
+   $Char = Elm.Char.make(_elm),
+   $Native$Keyboard = Elm.Native.Keyboard.make(_elm),
+   $Set = Elm.Set.make(_elm),
+   $Signal = Elm.Signal.make(_elm);
+   var _op = {};
+   var presses = A2($Signal.map,function (_) {    return _.keyCode;},$Native$Keyboard.presses);
+   var toXY = F2(function (_p0,keyCodes) {
+      var _p1 = _p0;
+      var is = function (keyCode) {    return A2($Set.member,keyCode,keyCodes) ? 1 : 0;};
+      return {x: is(_p1.right) - is(_p1.left),y: is(_p1.up) - is(_p1.down)};
+   });
+   var Directions = F4(function (a,b,c,d) {    return {up: a,down: b,left: c,right: d};});
+   var dropMap = F2(function (f,signal) {    return $Signal.dropRepeats(A2($Signal.map,f,signal));});
+   var EventInfo = F3(function (a,b,c) {    return {alt: a,meta: b,keyCode: c};});
+   var Blur = {ctor: "Blur"};
+   var Down = function (a) {    return {ctor: "Down",_0: a};};
+   var Up = function (a) {    return {ctor: "Up",_0: a};};
+   var rawEvents = $Signal.mergeMany(_U.list([A2($Signal.map,Up,$Native$Keyboard.ups)
+                                             ,A2($Signal.map,Down,$Native$Keyboard.downs)
+                                             ,A2($Signal.map,$Basics.always(Blur),$Native$Keyboard.blurs)]));
+   var empty = {alt: false,meta: false,keyCodes: $Set.empty};
+   var update = F2(function (event,model) {
+      var _p2 = event;
+      switch (_p2.ctor)
+      {case "Down": var _p3 = _p2._0;
+           return {alt: _p3.alt,meta: _p3.meta,keyCodes: A2($Set.insert,_p3.keyCode,model.keyCodes)};
+         case "Up": var _p4 = _p2._0;
+           return {alt: _p4.alt,meta: _p4.meta,keyCodes: A2($Set.remove,_p4.keyCode,model.keyCodes)};
+         default: return empty;}
+   });
+   var model = A3($Signal.foldp,update,empty,rawEvents);
+   var alt = A2(dropMap,function (_) {    return _.alt;},model);
+   var meta = A2(dropMap,function (_) {    return _.meta;},model);
+   var keysDown = A2(dropMap,function (_) {    return _.keyCodes;},model);
+   var arrows = A2(dropMap,toXY({up: 38,down: 40,left: 37,right: 39}),keysDown);
+   var wasd = A2(dropMap,toXY({up: 87,down: 83,left: 65,right: 68}),keysDown);
+   var isDown = function (keyCode) {    return A2(dropMap,$Set.member(keyCode),keysDown);};
+   var ctrl = isDown(17);
+   var shift = isDown(16);
+   var space = isDown(32);
+   var enter = isDown(13);
+   var Model = F3(function (a,b,c) {    return {alt: a,meta: b,keyCodes: c};});
+   return _elm.Keyboard.values = {_op: _op
+                                 ,arrows: arrows
+                                 ,wasd: wasd
+                                 ,enter: enter
+                                 ,space: space
+                                 ,ctrl: ctrl
+                                 ,shift: shift
+                                 ,alt: alt
+                                 ,meta: meta
+                                 ,isDown: isDown
+                                 ,keysDown: keysDown
+                                 ,presses: presses};
 };Elm.Native = Elm.Native || {};
 Elm.Native.Mouse = {};
 Elm.Native.Mouse.make = function(localRuntime) {
@@ -6589,16 +6697,16 @@ Elm.Goban.Position.make = function (_elm) {
       });
       return A2($List.foldr,partition,{ctor: "_Tuple2",_0: _U.list([]),_1: _U.list([])});
    }();
-   var remove = F2(function (coord,board) {    return _U.update(board,{grid: A2($Dict.remove,coord,board.grid)});});
-   var get = F2(function (board,coord) {    return A2($Dict.get,coord,board.grid);});
-   var captured = F3(function (board,stone,coords) {
+   var remove = F2(function (coord,position) {    return _U.update(position,{grid: A2($Dict.remove,coord,position.grid)});});
+   var get = F2(function (position,coord) {    return A2($Dict.get,coord,position.grid);});
+   var captured = F3(function (position,stone,coords) {
       var friendly = function (_p12) {    var _p13 = _p12;return _U.eq(stone,_p13._1);};
       var captured1 = F2(function (coord,_p14) {
          var _p15 = _p14;
          var _p18 = _p15._0._0;
          var _p17 = _p15._0._1;
-         var adjs = A2(adjacent,board.size,coord);
-         var neighbors = A3($List.map2,F2(function (v0,v1) {    return {ctor: "_Tuple2",_0: v0,_1: v1};}),adjs,A2($List.map,get(board),adjs));
+         var adjs = A2(adjacent,position.size,coord);
+         var neighbors = A3($List.map2,F2(function (v0,v1) {    return {ctor: "_Tuple2",_0: v0,_1: v1};}),adjs,A2($List.map,get(position),adjs));
          var _p16 = partitionKV(neighbors);
          var libs = _p16._0;
          var nonlibs = _p16._1;
@@ -6622,7 +6730,7 @@ Elm.Goban.Position.make = function (_elm) {
          return A2($Maybe.withDefault,
          {ctor: "_Tuple2",_0: _p23,_1: _p22},
          A2($Maybe.andThen,
-         A2(get,board,coord),
+         A2(get,position,coord),
          function (stone$) {
             return !_U.eq(stone,stone$) ? $Maybe.Nothing : function (_p21) {
                return $Maybe.Just($Basics.fst(_p21));
@@ -6644,26 +6752,26 @@ Elm.Goban.Position.make = function (_elm) {
       return posOn(_p28._0) && posOn(_p28._1);
    });
    var empty = function (size) {    return {size: size,grid: $Dict.empty};};
-   var Board = F2(function (a,b) {    return {size: a,grid: b};});
+   var Position = F2(function (a,b) {    return {size: a,grid: b};});
    var White = {ctor: "White"};
    var Black = {ctor: "Black"};
    var invertStone = function (stone) {    var _p29 = stone;if (_p29.ctor === "Black") {    return White;} else {    return Black;}};
-   var add = F3(function (stone,coord,board) {
-      if ($Basics.not(A2(within,board,coord))) return $Maybe.Nothing; else {
-            var _p30 = A2(get,board,coord);
+   var add = F3(function (stone,coord,position) {
+      if ($Basics.not(A2(within,position,coord))) return $Maybe.Nothing; else {
+            var _p30 = A2(get,position,coord);
             if (_p30.ctor === "Just") {
                   return $Maybe.Nothing;
                } else {
                   return $Maybe.Just(function () {
                      var stone$ = invertStone(stone);
-                     var board$ = _U.update(board,{grid: A3($Dict.insert,coord,stone,board.grid)});
+                     var position$ = _U.update(position,{grid: A3($Dict.insert,coord,stone,position.grid)});
                      var removeCaptured = F2(function (stone,coords) {
-                        var caps = A3(captured,board$,stone,coords);
+                        var caps = A3(captured,position$,stone,coords);
                         return _U.eq($Set.size(caps),0) ? $Maybe.Nothing : $Maybe.Just({ctor: "_Tuple2"
-                                                                                       ,_0: A3($Set.foldl,remove,board$,caps)
+                                                                                       ,_0: A3($Set.foldl,remove,position$,caps)
                                                                                        ,_1: $Maybe.Just({ctor: "_Tuple2",_0: stone,_1: caps})});
                      });
-                     var adjs = A2(adjacent,board.size,coord);
+                     var adjs = A2(adjacent,position.size,coord);
                      var _p31 = A2(removeCaptured,stone$,adjs);
                      if (_p31.ctor === "Just") {
                            return _p31._0;
@@ -6672,7 +6780,7 @@ Elm.Goban.Position.make = function (_elm) {
                            if (_p32.ctor === "Just") {
                                  return _p32._0;
                               } else {
-                                 return {ctor: "_Tuple2",_0: board$,_1: $Maybe.Nothing};
+                                 return {ctor: "_Tuple2",_0: position$,_1: $Maybe.Nothing};
                               }
                         }
                   }());
@@ -6683,7 +6791,7 @@ Elm.Goban.Position.make = function (_elm) {
                                        ,Black: Black
                                        ,White: White
                                        ,invertStone: invertStone
-                                       ,Board: Board
+                                       ,Position: Position
                                        ,empty: empty
                                        ,within: within
                                        ,get: get
@@ -6710,29 +6818,47 @@ Elm.Goban.UI.make = function (_elm) {
    $Result = Elm.Result.make(_elm),
    $Signal = Elm.Signal.make(_elm);
    var _op = {};
-   var cscale = 1.5;
-   var cdiam = 20;
-   var cedge = 19;
-   var defaultStonesForm = function (_p0) {
-      var _p1 = _p0;
-      var _p7 = _p1.stoneDiameter;
-      var _p6 = _p1.edgeSize;
-      var ixs = _U.range(1,_p6);
+   var absoluteToCoord = F3(function (_p1,scale,_p0) {
+      var _p2 = _p1;
+      var _p3 = _p0;
+      var _p7 = _p3.margin;
+      var _p6 = _p3.edgeSize;
+      var csd = scale * _p3.stoneDiameter;
+      var trans = function (delta) {    return 1 + $Basics.round(delta / csd);};
+      var xo = $Basics.toFloat(_p2._0) + csd * (_p7 + 1) / 2;
+      var yo = $Basics.toFloat(_p2._1) + csd * ((_p7 + 1) / 2 + $Basics.toFloat(_p6) - 1);
+      var toCoord = function (_p4) {
+         var _p5 = _p4;
+         var legal = function (p) {    return _U.cmp(p,1) > -1 && _U.cmp(p,_p6) < 1;};
+         var y = trans(yo - $Basics.toFloat(_p5._1));
+         var x = trans($Basics.toFloat(_p5._0) - xo);
+         return legal(x) && legal(y) ? $Maybe.Just({ctor: "_Tuple2",_0: x,_1: y}) : $Maybe.Nothing;
+      };
+      return toCoord;
+   });
+   var defaultStonesForm = function (_p8) {
+      var _p9 = _p8;
+      var _p15 = _p9.stoneDiameter;
+      var _p14 = _p9.edgeSize;
+      var ixs = _U.range(1,_p14);
       var form = function (color) {
-         var circle = $Graphics$Collage.circle(_p7 / 2);
+         var circle = $Graphics$Collage.circle(_p15 / 2);
          var center = A2($Graphics$Collage.filled,color,circle);
          var border = A2($Graphics$Collage.outlined,$Graphics$Collage.solid($Color.black),circle);
          return $Graphics$Collage.group(_U.list([center,border]));
       };
       var black = form($Color.black);
       var white = form($Color.white);
-      var stoneForm = function (st) {    var _p2 = st;if (_p2.ctor === "Black") {    return black;} else {    return white;}};
-      var scaled = function (x) {    return x * _p7;};
-      var scaledCoord = function (_p3) {    var _p4 = _p3;return {ctor: "_Tuple2",_0: scaled($Basics.toFloat(_p4._0)),_1: scaled($Basics.toFloat(_p4._1))};};
-      var stoneFormMoved = function (coord) {    return function (_p5) {    return A2($Graphics$Collage.move,scaledCoord(coord),stoneForm(_p5));};};
-      var halflen = scaled((0 - ($Basics.toFloat(_p6) + 1)) / 2);
-      var stonesForm = function (board) {
-         var cell = function (coord) {    return A2($Maybe.map,stoneFormMoved(coord),A2($Goban$Position.get,board,coord));};
+      var stoneForm = function (st) {    var _p10 = st;if (_p10.ctor === "Black") {    return black;} else {    return white;}};
+      var scaled = function (x) {    return x * _p15;};
+      var scaledCoord = function (_p11) {
+         var _p12 = _p11;
+         return {ctor: "_Tuple2",_0: scaled($Basics.toFloat(_p12._0)),_1: scaled($Basics.toFloat(_p12._1))};
+      };
+      var stoneFormMoved = function (coord) {    return function (_p13) {    return A2($Graphics$Collage.move,scaledCoord(coord),stoneForm(_p13));};};
+      var halflen = scaled((0 - ($Basics.toFloat(_p14) + 1)) / 2);
+      var stonesForm = function (pos) {
+         var cell = function (coord) {    return A2($Maybe.map,stoneFormMoved(coord),A2($Goban$Position.get,pos,coord));};
          var row = function (ypos) {    return A2($List.filterMap,function (x) {    return cell({ctor: "_Tuple2",_0: x,_1: ypos});},ixs);};
          var stones = $Graphics$Collage.group($List.concat(A2($List.map,row,ixs)));
          return A2($Graphics$Collage.move,{ctor: "_Tuple2",_0: halflen,_1: halflen},stones);
@@ -6754,19 +6880,19 @@ Elm.Goban.UI.make = function (_elm) {
       var center = _U.eq(A2($Basics._op["%"],edgeSize,2),1) ? _U.list([{ctor: "_Tuple2",_0: mid,_1: mid}]) : _U.list([]);
       return A2($Basics._op["++"],corners,A2($Basics._op["++"],sides,center));
    };
-   var defaultBoardForm = function (_p8) {
-      var _p9 = _p8;
-      var _p12 = _p9.stoneDiameter;
-      var star = A2($Graphics$Collage.filled,$Color.black,$Graphics$Collage.circle(_p12 / 6));
-      var scaled = function (x) {    return x * _p12;};
-      var scaledCoord = function (_p10) {    var _p11 = _p10;return {ctor: "_Tuple2",_0: scaled(_p11._0),_1: scaled(_p11._1)};};
+   var defaultBoardForm = function (_p16) {
+      var _p17 = _p16;
+      var _p20 = _p17.stoneDiameter;
+      var star = A2($Graphics$Collage.filled,$Color.black,$Graphics$Collage.circle(_p20 / 6));
+      var scaled = function (x) {    return x * _p20;};
+      var scaledCoord = function (_p18) {    var _p19 = _p18;return {ctor: "_Tuple2",_0: scaled(_p19._0),_1: scaled(_p19._1)};};
       var line = F2(function (c0,c1) {
          return A2($Graphics$Collage.traced,$Graphics$Collage.solid($Color.black),A2($Graphics$Collage.segment,scaledCoord(c0),scaledCoord(c1)));
       });
       var starAt = function (coord) {    return A2($Graphics$Collage.move,scaledCoord(coord),star);};
-      var edge = $Basics.toFloat(_p9.edgeSize);
+      var edge = $Basics.toFloat(_p17.edgeSize);
       var surface = function () {
-         var square = $Graphics$Collage.square(scaled(edge + _p9.margin));
+         var square = $Graphics$Collage.square(scaled(edge + _p17.margin));
          var center = A2($Graphics$Collage.filled,$Color.yellow,square);
          var border = A2($Graphics$Collage.outlined,$Graphics$Collage.solid($Color.black),square);
          return $Graphics$Collage.group(_U.list([center,border]));
@@ -6781,52 +6907,152 @@ Elm.Goban.UI.make = function (_elm) {
       var all = $Graphics$Collage.group(_U.list([surface,markings]));
       return all;
    };
-   var defaultPositionForm = function (bfspec) {
-      var stonesWith = defaultStonesForm(bfspec);
-      var bf = defaultBoardForm(bfspec);
-      var form = function (board) {    return $Graphics$Collage.group(_U.list([bf,stonesWith(board)]));};
+   var defaultPositionForm = function (pfspec) {
+      var stonesWith = defaultStonesForm(pfspec);
+      var bf = defaultBoardForm(pfspec);
+      var form = function (pos) {    return $Graphics$Collage.group(_U.list([bf,stonesWith(pos)]));};
       return form;
    };
-   var testBoardFormSpec = {edgeSize: 9,margin: 1,stoneDiameter: 20};
-   var cbfs = _U.update(testBoardFormSpec,{edgeSize: cedge,stoneDiameter: cdiam});
-   var cdim = 20 + $Basics.round(cscale * cdiam * (cedge + cbfs.margin));
-   var p2cSpec = function (_p13) {
-      var _p14 = _p13;
-      var csd = cscale * _p14.stoneDiameter;
-      var trans = function (p) {    return $Basics.round(p / csd);};
-      var edge = $Basics.toFloat(_p14.edgeSize);
-      var offset = ($Basics.toFloat(cdim) - csd * (edge - 1)) / 2;
-      var p2c = function (_p15) {
-         var _p16 = _p15;
-         var legal = function (p) {    return _U.cmp(p,1) > -1 && _U.cmp(p,edge) < 1;};
-         var y = trans($Basics.toFloat(cdim) - offset - $Basics.toFloat(_p16._1)) + 1;
-         var x = trans($Basics.toFloat(_p16._0) - offset) + 1;
-         return legal(x) && legal(y) ? $Maybe.Just({ctor: "_Tuple2",_0: x,_1: y}) : $Maybe.Nothing;
-      };
-      return p2c;
-   };
-   var boardElement = function () {
-      var dpf = defaultPositionForm(cbfs);
-      var form = function (board) {    return A3($Graphics$Collage.collage,cdim,cdim,_U.list([A2($Graphics$Collage.scale,1.5,dpf(board))]));};
-      return form;
-   }();
-   var posToCoord = p2cSpec(cbfs);
-   var BoardFormSpec = F3(function (a,b,c) {    return {edgeSize: a,margin: b,stoneDiameter: c};});
+   var testPositionFormSpec = {edgeSize: 9,margin: 1,stoneDiameter: 20};
+   var PositionFormSpec = F3(function (a,b,c) {    return {edgeSize: a,margin: b,stoneDiameter: c};});
    return _elm.Goban.UI.values = {_op: _op
-                                 ,BoardFormSpec: BoardFormSpec
-                                 ,testBoardFormSpec: testBoardFormSpec
+                                 ,PositionFormSpec: PositionFormSpec
+                                 ,testPositionFormSpec: testPositionFormSpec
                                  ,starCoords: starCoords
                                  ,defaultBoardForm: defaultBoardForm
                                  ,defaultStonesForm: defaultStonesForm
                                  ,defaultPositionForm: defaultPositionForm
-                                 ,cedge: cedge
-                                 ,cdiam: cdiam
-                                 ,cbfs: cbfs
-                                 ,cscale: cscale
-                                 ,cdim: cdim
-                                 ,boardElement: boardElement
-                                 ,p2cSpec: p2cSpec
-                                 ,posToCoord: posToCoord};
+                                 ,absoluteToCoord: absoluteToCoord};
+};Elm.Goban = Elm.Goban || {};
+Elm.Goban.Variation = Elm.Goban.Variation || {};
+Elm.Goban.Variation.make = function (_elm) {
+   "use strict";
+   _elm.Goban = _elm.Goban || {};
+   _elm.Goban.Variation = _elm.Goban.Variation || {};
+   if (_elm.Goban.Variation.values) return _elm.Goban.Variation.values;
+   var _U = Elm.Native.Utils.make(_elm),
+   $Basics = Elm.Basics.make(_elm),
+   $Debug = Elm.Debug.make(_elm),
+   $Goban$Position = Elm.Goban.Position.make(_elm),
+   $List = Elm.List.make(_elm),
+   $Maybe = Elm.Maybe.make(_elm),
+   $Result = Elm.Result.make(_elm),
+   $Signal = Elm.Signal.make(_elm);
+   var _op = {};
+   var nextPos = function (_p0) {
+      var _p1 = _p0;
+      var nextPosVT = F2(function (ancestors,_p2) {
+         var _p3 = _p2;
+         return A2($Maybe.andThen,
+         _p3._0.children,
+         function (_p4) {
+            var _p5 = _p4;
+            var parent = {position: _p3._0.position,prev: _p5.prev,next: _p5.next};
+            return $Maybe.Just({focus: _p5.current,ancestors: A2($List._op["::"],parent,ancestors)});
+         });
+      });
+      return A2(nextPosVT,_p1.ancestors,_p1.focus);
+   };
+   var get = function (_p6) {    var _p7 = _p6;var _p8 = _p7.focus;var position = _p8._0.position;return position;};
+   var withFocus = F2(function (op,cursor) {
+      return A2($Maybe.andThen,op(cursor.focus),function (focus) {    return $Maybe.Just(_U.update(cursor,{focus: focus}));});
+   });
+   var VCursor = F2(function (a,b) {    return {focus: a,ancestors: b};});
+   var Context = F3(function (a,b,c) {    return {position: a,prev: b,next: c};});
+   var VTree = function (a) {    return {ctor: "VTree",_0: a};};
+   var empty = function (size) {    return {focus: VTree({position: $Goban$Position.empty(size),children: $Maybe.Nothing}),ancestors: _U.list([])};};
+   var edit = F2(function (op,cursor) {
+      var trans = function (_p9) {    var _p10 = _p9;var _p11 = _p10._0;return VTree(_U.update(_p11,{position: op(_p11.position)}));};
+      return _U.update(cursor,{focus: trans(cursor.focus)});
+   });
+   var put = function (pos) {    return edit(function (_p12) {    return pos;});};
+   var newAlt = F2(function (alt,cursor) {
+      var op = function (_p13) {
+         var _p14 = _p13;
+         var _p17 = _p14._0;
+         var alts$ = function () {
+            var _p15 = _p17.children;
+            if (_p15.ctor === "Nothing") {
+                  return {current: alt,prev: _U.list([]),next: _U.list([])};
+               } else {
+                  var _p16 = _p15._0;
+                  return _U.update(_p16,{current: alt,prev: A2($List._op["::"],_p16.current,_p16.prev)});
+               }
+         }();
+         return VTree(_U.update(_p17,{children: $Maybe.Just(alts$)}));
+      };
+      return _U.update(cursor,{focus: op(cursor.focus)});
+   });
+   var add = F2(function (pos,cursor) {
+      var cursor$ = A2(newAlt,VTree({position: pos,children: $Maybe.Nothing}),cursor);
+      return A2($Maybe.withDefault,cursor$,nextPos(cursor$));
+   });
+   var prevPos = function (_p18) {
+      var _p19 = _p18;
+      var _p20 = _p19.ancestors;
+      if (_p20.ctor === "[]") {
+            return $Maybe.Nothing;
+         } else {
+            var children = $Maybe.Just({current: _p19.focus,prev: _p20._0.prev,next: _p20._0.next});
+            var vt = VTree({position: _p20._0.position,children: children});
+            return $Maybe.Just({focus: vt,ancestors: _p20._1});
+         }
+   };
+   var nextAlt = function () {
+      var nextAltVT = function (_p21) {
+         var _p22 = _p21;
+         var _p26 = _p22._0;
+         return A2($Maybe.andThen,
+         _p26.children,
+         function (_p23) {
+            var _p24 = _p23;
+            var _p25 = _p24.next;
+            if (_p25.ctor === "[]") {
+                  return $Maybe.Nothing;
+               } else {
+                  var alts = $Maybe.Just({current: _p25._0,prev: A2($List._op["::"],_p24.current,_p24.prev),next: _p25._1});
+                  return $Maybe.Just(VTree(_U.update(_p26,{children: alts})));
+               }
+         });
+      };
+      return withFocus(nextAltVT);
+   }();
+   var prevAlt = function () {
+      var prevAltVT = function (_p27) {
+         var _p28 = _p27;
+         var _p32 = _p28._0;
+         return A2($Maybe.andThen,
+         _p32.children,
+         function (_p29) {
+            var _p30 = _p29;
+            var _p31 = _p30.prev;
+            if (_p31.ctor === "[]") {
+                  return $Maybe.Nothing;
+               } else {
+                  var alts = $Maybe.Just({current: _p31._0,prev: _p31._1,next: A2($List._op["::"],_p30.current,_p30.next)});
+                  return $Maybe.Just(VTree(_U.update(_p32,{children: alts})));
+               }
+         });
+      };
+      return withFocus(prevAltVT);
+   }();
+   var Alts = F3(function (a,b,c) {    return {current: a,prev: b,next: c};});
+   return _elm.Goban.Variation.values = {_op: _op
+                                        ,Alts: Alts
+                                        ,VTree: VTree
+                                        ,Context: Context
+                                        ,VCursor: VCursor
+                                        ,empty: empty
+                                        ,withFocus: withFocus
+                                        ,get: get
+                                        ,edit: edit
+                                        ,put: put
+                                        ,add: add
+                                        ,newAlt: newAlt
+                                        ,nextPos: nextPos
+                                        ,prevPos: prevPos
+                                        ,nextAlt: nextAlt
+                                        ,prevAlt: prevAlt};
 };Elm.Main = Elm.Main || {};
 Elm.Main.make = function (_elm) {
    "use strict";
@@ -6837,43 +7063,146 @@ Elm.Main.make = function (_elm) {
    $Debug = Elm.Debug.make(_elm),
    $Goban$Position = Elm.Goban.Position.make(_elm),
    $Goban$UI = Elm.Goban.UI.make(_elm),
+   $Goban$Variation = Elm.Goban.Variation.make(_elm),
+   $Graphics$Collage = Elm.Graphics.Collage.make(_elm),
    $Graphics$Element = Elm.Graphics.Element.make(_elm),
+   $Keyboard = Elm.Keyboard.make(_elm),
    $List = Elm.List.make(_elm),
    $Maybe = Elm.Maybe.make(_elm),
    $Mouse = Elm.Mouse.make(_elm),
    $Result = Elm.Result.make(_elm),
-   $Signal = Elm.Signal.make(_elm);
+   $Signal = Elm.Signal.make(_elm),
+   $Text = Elm.Text.make(_elm);
    var _op = {};
+   var IArrow = function (a) {    return {ctor: "IArrow",_0: a};};
+   var iarrows = A2($Signal.map,IArrow,$Keyboard.arrows);
+   var IClick = function (a) {    return {ctor: "IClick",_0: a};};
+   var iclicks = A2($Signal.map,IClick,A2($Signal.sampleOn,$Mouse.clicks,$Mouse.position));
+   var input = A2($Signal.merge,iclicks,iarrows);
+   var altCounts = function (_p0) {
+      var _p1 = _p0;
+      var _p2 = _p1._0.children;
+      if (_p2.ctor === "Nothing") {
+            return {ctor: "_Tuple2",_0: 0,_1: 0};
+         } else {
+            return {ctor: "_Tuple2",_0: $List.length(_p2._0.prev),_1: $List.length(_p2._0.next)};
+         }
+   };
+   var forwardMoveCount = function (_p3) {
+      var _p4 = _p3;
+      return A2($Maybe.withDefault,
+      0,
+      A2($Maybe.map,
+      function (_p5) {
+         return function (n) {
+            return n + 1;
+         }(forwardMoveCount(function (_) {    return _.current;}(_p5)));
+      },
+      _p4._0.children));
+   };
+   var variationInfo = function (vs) {
+      var _p6 = altCounts(vs.vcur.focus);
+      var prevCount = _p6._0;
+      var nextCount = _p6._1;
+      var altInfo = $Graphics$Element.leftAligned($Text.fromString(A2($Basics._op["++"],
+      "Variation ",
+      A2($Basics._op["++"],$Basics.toString(prevCount + 1),A2($Basics._op["++"]," of ",$Basics.toString(prevCount + 1 + nextCount))))));
+      var currentCount = $List.length(vs.vcur.ancestors);
+      var totalCount = currentCount + forwardMoveCount(vs.vcur.focus);
+      var moveInfo = $Graphics$Element.leftAligned($Text.fromString(A2($Basics._op["++"],
+      "Move ",
+      A2($Basics._op["++"],$Basics.toString(currentCount),A2($Basics._op["++"]," of ",$Basics.toString(totalCount))))));
+      return A2($Graphics$Element.above,moveInfo,altInfo);
+   };
+   var navigateVariations = F2(function (_p7,state) {
+      var _p8 = _p7;
+      var _p11 = _p8.y;
+      var _p10 = _p8.x;
+      var update = function (st) {
+         return function (_p9) {
+            return A2($Maybe.withDefault,state,A2($Maybe.map,function (vcur$) {    return {stone: st,vcur: vcur$};},_p9));
+         };
+      };
+      var update1 = update(state.stone);
+      var stone$ = $Goban$Position.invertStone(state.stone);
+      var update0 = update(stone$);
+      return _U.eq(_p10,1) && _U.eq(_p11,0) ? update0($Goban$Variation.nextPos(state.vcur)) : _U.eq(_p10,-1) && _U.eq(_p11,
+      0) ? update0($Goban$Variation.prevPos(state.vcur)) : _U.eq(_p10,0) && _U.eq(_p11,1) ? update1($Goban$Variation.prevAlt(state.vcur)) : _U.eq(_p10,
+      0) && _U.eq(_p11,-1) ? update1($Goban$Variation.nextAlt(state.vcur)) : state;
+   });
+   var arrowView = A2($Signal.map,$Graphics$Element.show,$Keyboard.arrows);
+   var coffset = 10;
+   var cscale = 1.5;
+   var cdiam = 20;
+   var cedge = 19;
+   var cpfs = {edgeSize: cedge,margin: 1,stoneDiameter: cdiam};
+   var posToCoord = A3($Goban$UI.absoluteToCoord,{ctor: "_Tuple2",_0: coffset,_1: coffset},cscale,cpfs);
    var view = F2(function (pos,clickPos) {
       return A2($Graphics$Element.above,
       A2($Graphics$Element.above,
-      A2($Graphics$Element.above,$Graphics$Element.show($Goban$UI.posToCoord(pos)),$Graphics$Element.show($Goban$UI.posToCoord(clickPos))),
+      A2($Graphics$Element.above,$Graphics$Element.show(posToCoord(pos)),$Graphics$Element.show(posToCoord(clickPos))),
       $Graphics$Element.show(pos)),
       $Graphics$Element.show(clickPos));
    });
    var mouseView = A3($Signal.map2,view,$Mouse.position,A2($Signal.sampleOn,$Mouse.clicks,$Mouse.position));
-   var update = F2(function (mc,_p0) {
-      var _p1 = _p0;
-      var _p5 = _p1.stone;
-      var _p4 = _p1.board;
-      var mcoord = $Goban$UI.posToCoord(mc);
-      var _p2 = function () {
-         var _p3 = A2($Maybe.andThen,mcoord,function (coord) {    return A3($Goban$Position.add,_p5,coord,_p4);});
-         if (_p3.ctor === "Nothing") {
-               return {ctor: "_Tuple2",_0: _p5,_1: _p4};
+   var placeStone = F2(function (mc,_p12) {
+      var _p13 = _p12;
+      var _p18 = _p13.vcur;
+      var _p17 = _p13.stone;
+      var mcoord = posToCoord(mc);
+      var _p14 = _p18.focus;
+      var vt = _p14._0;
+      var _p15 = function () {
+         var _p16 = A2($Maybe.andThen,mcoord,function (coord) {    return A3($Goban$Position.add,_p17,coord,vt.position);});
+         if (_p16.ctor === "Nothing") {
+               return {ctor: "_Tuple2",_0: _p17,_1: _p18};
             } else {
-               return {ctor: "_Tuple2",_0: $Goban$Position.invertStone(_p5),_1: _p3._0._0};
+               return {ctor: "_Tuple2",_0: $Goban$Position.invertStone(_p17),_1: A2($Goban$Variation.add,_p16._0._0,_p18)};
             }
       }();
-      var stone$ = _p2._0;
-      var board$ = _p2._1;
-      return {stone: stone$,board: board$};
+      var stone$ = _p15._0;
+      var vcur$ = _p15._1;
+      return {stone: stone$,vcur: vcur$};
    });
-   var boardState = A3($Signal.foldp,
-   update,
-   {stone: $Goban$Position.Black,board: $Goban$Position.empty($Goban$UI.cedge)},
-   A2($Signal.sampleOn,$Mouse.clicks,$Mouse.position));
-   var boardView = A2($Signal.map,function (bs) {    return $Goban$UI.boardElement(bs.board);},boardState);
-   var main = A3($Signal.map2,$Graphics$Element.above,boardView,mouseView);
-   return _elm.Main.values = {_op: _op,update: update,view: view,boardState: boardState,boardView: boardView,mouseView: mouseView,main: main};
+   var update = function (gi) {    var _p19 = gi;if (_p19.ctor === "IClick") {    return placeStone(_p19._0);} else {    return navigateVariations(_p19._0);}};
+   var cdim = coffset * 2 + $Basics.round(cscale * cdiam * (cedge + cpfs.margin));
+   var positionElement = function () {
+      var dpf = $Goban$UI.defaultPositionForm(cpfs);
+      var form = function (pos) {    return A3($Graphics$Collage.collage,cdim,cdim,_U.list([A2($Graphics$Collage.scale,cscale,dpf(pos))]));};
+      return form;
+   }();
+   var variationState = A3($Signal.foldp,update,{stone: $Goban$Position.Black,vcur: $Goban$Variation.empty(cedge)},input);
+   var variationView = A2($Signal.map,function (vs) {    return positionElement($Goban$Variation.get(vs.vcur));},variationState);
+   var variationInfoView = A2($Signal.map,variationInfo,variationState);
+   var main = A3($Signal.map2,
+   $Graphics$Element.above,
+   variationView,
+   A3($Signal.map2,$Graphics$Element.above,variationInfoView,A3($Signal.map2,$Graphics$Element.above,arrowView,mouseView)));
+   return _elm.Main.values = {_op: _op
+                             ,cedge: cedge
+                             ,cdiam: cdiam
+                             ,cpfs: cpfs
+                             ,cscale: cscale
+                             ,coffset: coffset
+                             ,cdim: cdim
+                             ,positionElement: positionElement
+                             ,posToCoord: posToCoord
+                             ,view: view
+                             ,mouseView: mouseView
+                             ,arrowView: arrowView
+                             ,placeStone: placeStone
+                             ,navigateVariations: navigateVariations
+                             ,update: update
+                             ,forwardMoveCount: forwardMoveCount
+                             ,altCounts: altCounts
+                             ,variationInfo: variationInfo
+                             ,IClick: IClick
+                             ,IArrow: IArrow
+                             ,iclicks: iclicks
+                             ,iarrows: iarrows
+                             ,input: input
+                             ,variationState: variationState
+                             ,variationView: variationView
+                             ,variationInfoView: variationInfoView
+                             ,main: main};
 };</script></head><body><script type="text/javascript">Elm.fullscreen(Elm.Main)</script></body></html>
