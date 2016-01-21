@@ -25,27 +25,23 @@ view pos clickPos = GE.show (posToCoord pos) `GE.above` GE.show (posToCoord clic
 mouseView = Signal.map2 view Mouse.position <| Signal.sampleOn Mouse.clicks Mouse.position
 arrowView = Signal.map GE.show <| Keyboard.arrows
 
-placeStone mc { stone, vcur } =
-  let (GV.VTree vt) = vcur.focus
-      mcoord = posToCoord mc
-      (stone', vcur') = case mcoord `Maybe.andThen` \coord -> GP.add stone coord vt.position of
-                              Nothing -> (stone, vcur)
-                              Just (pos, _) -> (GP.invertStone stone, GV.add pos () vcur)
-  in { stone = stone', vcur = vcur' }
+type alias Metadata = { nextStone : GP.Stone }
 
--- TODO: currently assumes stone alternates; add variation metadata instead?
-navigateVariations {x, y} state =
-  let stone' = GP.invertStone state.stone
-      update st =
-        Maybe.withDefault state <<
-        Maybe.map (\vcur' -> { stone = st, vcur = vcur' })
-      update0 = update stone'
-      update1 = update state.stone
-  in if x == 1 && y == 0 then update0 <| GV.nextPos state.vcur
-     else if x == -1 && y == 0 then update0 <| GV.prevPos state.vcur
-     else if x == 0 && y == 1 then update1 <| GV.prevAlt state.vcur
-     else if x == 0 && y == -1 then update1 <| GV.nextAlt state.vcur
-     else state
+placeStone mc vcur =
+  let (GV.VTree vt) = vcur.focus
+      {nextStone} = vt.metadata
+      mcoord = posToCoord mc
+  in case mcoord `Maybe.andThen` \coord -> GP.add nextStone coord vt.position of
+       Nothing -> vcur
+       Just (pos, _) -> GV.add pos { nextStone = (GP.invertStone nextStone) } vcur
+
+navigateVariations {x, y} vcur =
+  Maybe.withDefault vcur <|
+  if x == 1 && y == 0 then GV.nextPos vcur
+  else if x == -1 && y == 0 then GV.prevPos vcur
+  else if x == 0 && y == 1 then GV.prevAlt vcur
+  else if x == 0 && y == -1 then GV.nextAlt vcur
+  else Nothing
 
 update gi = case gi of
   IClick mc -> placeStone mc
@@ -59,10 +55,10 @@ altCounts (GV.VTree {children}) = case children of
   Nothing -> (0, 0)
   Just {prev, next} -> (List.length prev, List.length next)
 
-variationInfo vs =
-  let currentCount = List.length vs.vcur.ancestors
-      totalCount = currentCount + forwardMoveCount vs.vcur.focus
-      (prevCount, nextCount) = altCounts vs.vcur.focus
+variationInfo vcur =
+  let currentCount = List.length vcur.ancestors
+      totalCount = currentCount + forwardMoveCount vcur.focus
+      (prevCount, nextCount) = altCounts vcur.focus
       moveInfo = GE.leftAligned <| Text.fromString <| "Move " ++ toString currentCount ++ " of " ++ toString totalCount
       altInfo = GE.leftAligned <| Text.fromString <| "Variation " ++ toString (prevCount + 1) ++ " of " ++ toString (prevCount + 1 + nextCount)
   in moveInfo `GE.above` altInfo
@@ -72,8 +68,8 @@ iclicks = Signal.map IClick <| Signal.sampleOn Mouse.clicks Mouse.position
 iarrows = Signal.map IArrow Keyboard.arrows
 input = Signal.merge iclicks iarrows
 
-variationState = Signal.foldp update { stone = GP.Black, vcur = GV.empty cedge () } input
-variationView = Signal.map (\vs -> positionElement <| GV.get vs.vcur) variationState
+variationState = Signal.foldp update (GV.empty cedge { nextStone = GP.Black }) input
+variationView = Signal.map (positionElement << GV.get) variationState
 variationInfoView = Signal.map variationInfo variationState
 
 main = Signal.map2 GE.above variationView <| Signal.map2 GE.above variationInfoView <| Signal.map2 GE.above arrowView mouseView
