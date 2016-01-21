@@ -3,55 +3,61 @@ module Goban.Variation
 
 import Goban.Position as GP
 
-type alias Alts =
-  { current : VTree
-  , prev : List VTree
-  , next : List VTree
+type alias Alts a =
+  { current : VTree a
+  , prev : List (VTree a)
+  , next : List (VTree a)
   }
 
-type VTree = VTree
+type VTree a = VTree
   { position : GP.Position
-  , children : Maybe Alts
+  , metadata : a
+  , children : Maybe (Alts a)
   }
 
-type alias Context =
+type alias Context a =
   { position : GP.Position
-  , prev : List VTree
-  , next : List VTree
+  , metadata : a
+  , prev : List (VTree a)
+  , next : List (VTree a)
   }
 
-type alias VCursor = { focus : VTree, ancestors : List Context }
+type alias VCursor a = { focus : VTree a, ancestors : List (Context a) }
 
-empty : Int -> VCursor
-empty size =
-  { focus = VTree { position = GP.empty size, children = Nothing }
+empty : Int -> a -> VCursor a
+empty size metadata =
+  { focus = VTree { position = GP.empty size
+                  , metadata = metadata
+                  , children = Nothing }
   , ancestors = []
   }
 
-withFocus : (VTree -> Maybe VTree) -> VCursor -> Maybe VCursor
+withFocus : (VTree a -> Maybe (VTree a)) -> VCursor a -> Maybe (VCursor a)
 withFocus op cursor =
   op cursor.focus `Maybe.andThen`
   \focus -> Just { cursor | focus = focus }
 
-get : VCursor -> GP.Position
+get : VCursor a -> GP.Position
 get {focus} = let (VTree {position}) = focus
               in position
 
-edit : (GP.Position -> GP.Position) -> VCursor -> VCursor
+edit : (GP.Position -> GP.Position) -> VCursor a -> VCursor a
 edit op cursor =
   let trans (VTree vt) = VTree { vt | position = op vt.position }
   in { cursor | focus = trans cursor.focus }
 
-put : GP.Position -> VCursor -> VCursor
+put : GP.Position -> VCursor a -> VCursor a
 put pos = edit (\_ -> pos)
 
 -- TODO: search for existing alt with same position
-add : GP.Position -> VCursor -> VCursor
-add pos cursor =
-  let cursor' = newAlt (VTree { position = pos, children = Nothing }) cursor
+add : GP.Position -> a -> VCursor a -> VCursor a
+add pos metadata cursor =
+  let cursor' = newAlt (VTree { position = pos
+                              , metadata = metadata
+                              , children = Nothing }) cursor
   in Maybe.withDefault cursor' <| nextPos cursor'
 
-newAlt : VTree -> VCursor -> VCursor
+newAlt : VTree a -> VCursor a -> VCursor a
 newAlt alt cursor =
   let op (VTree focus) =
         let alts' = case focus.children of
@@ -61,24 +67,29 @@ newAlt alt cursor =
         in VTree { focus | children = Just alts' }
   in { cursor | focus = op cursor.focus }
 
-nextPos : VCursor -> Maybe VCursor
+nextPos : VCursor a -> Maybe (VCursor a)
 nextPos {focus, ancestors} =
-  let nextPosVT ancestors (VTree {position, children}) =
+  let nextPosVT ancestors (VTree {position, metadata, children}) =
         children `Maybe.andThen`
         \{current, prev, next} ->
-          let parent = { position = position, prev = prev, next = next }
+          let parent = { position = position
+                       , metadata = metadata
+                       , prev = prev
+                       , next = next }
           in Just { focus = current, ancestors = parent::ancestors }
   in nextPosVT ancestors focus
 
-prevPos : VCursor -> Maybe VCursor
+prevPos : VCursor a -> Maybe (VCursor a)
 prevPos {focus, ancestors} = case ancestors of
   [] -> Nothing
-  {position, prev, next}::ancestors ->
+  {position, metadata, prev, next}::ancestors ->
     let children = Just { current = focus, prev = prev, next = next }
-        vt = VTree { position = position, children = children }
+        vt = VTree { position = position
+                   , metadata = metadata
+                   , children = children }
     in Just { focus = vt, ancestors = ancestors}
 
-nextAlt : VCursor -> Maybe VCursor
+nextAlt : VCursor a -> Maybe (VCursor a)
 nextAlt =
   let nextAltVT (VTree vt) =
         vt.children `Maybe.andThen`
@@ -91,7 +102,7 @@ nextAlt =
             in Just <| VTree { vt | children = alts }
   in withFocus nextAltVT
 
-prevAlt : VCursor -> Maybe VCursor
+prevAlt : VCursor a -> Maybe (VCursor a)
 prevAlt =
   let prevAltVT (VTree vt) =
         vt.children `Maybe.andThen`

@@ -30,7 +30,7 @@ placeStone mc { stone, vcur } =
       mcoord = posToCoord mc
       (stone', vcur') = case mcoord `Maybe.andThen` \coord -> GP.add stone coord vt.position of
                               Nothing -> (stone, vcur)
-                              Just (pos, _) -> (GP.invertStone stone, GV.add pos vcur)
+                              Just (pos, _) -> (GP.invertStone stone, GV.add pos () vcur)
   in { stone = stone', vcur = vcur' }
 
 -- TODO: currently assumes stone alternates; add variation metadata instead?
@@ -72,7 +72,7 @@ iclicks = Signal.map IClick <| Signal.sampleOn Mouse.clicks Mouse.position
 iarrows = Signal.map IArrow Keyboard.arrows
 input = Signal.merge iclicks iarrows
 
-variationState = Signal.foldp update { stone = GP.Black, vcur = GV.empty cedge } input
+variationState = Signal.foldp update { stone = GP.Black, vcur = GV.empty cedge () } input
 variationView = Signal.map (\vs -> positionElement <| GV.get vs.vcur) variationState
 variationInfoView = Signal.map variationInfo variationState
 
