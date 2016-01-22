@@ -10,9 +10,13 @@ type alias Collection = List GameTree
 type GameTree = GameTree Sequence (List GameTree)
 type alias Sequence = List Node
 type alias Node = List Property
-type alias Property = (PropIdent, List PropValue)
+type Property = Basic PropIdent (List PropValue)
+              | Play Color Point | Add Color (List Point) | Size Size
+type Color = E | B | W
 type alias PropIdent = String
 type alias PropValue = String
+type alias Size = Int
+type alias Point = (Int, Int)
 
 pure val ss = Ok (val, ss)
 (>>=) p0 fp1 ss = p0 ss `Result.andThen` uncurry fp1
@@ -62,8 +66,25 @@ collection = list1 gameTree <* wspace >>= eos
 gameTree ss = (bracket '(' ')' <| GameTree <$> sequence <*> list0 gameTree) ss
 sequence = list1 node
 node = wspace *> char ';' *> list0 property
-property = wspace *> ((,) <$> propIdent <*> list1 propValue)
+property =
+  wspace *> (playProperty <|> addProperty <|> sizeProperty <|> basicProperty)
 
+playProperty =
+  let prop color ident = string ident *> (Play color <$> pointValue)
+  in prop B "B" <|> prop W "W"
+addProperty =
+  let prop color ident = string ident *> (Add color <$> list1 pointValue)
+  in prop E "AE" <|> prop B "AB" <|> prop W "AW"
+pointValue = bracket '[' ']' pointValueText
+pointValueText = (,) <$> pointLetter <*> pointLetter
+pointLetter =
+  String.fromChar <$> charInStr alphaLowerUpper >>=
+  lift (\letter -> case String.indices letter alphaLowerUpper of
+    [index] -> Ok <| index + 1
+    _ -> Err <| "invalid letter '" ++ letter ++ "'")
+sizeProperty = Size <$> (string "SZ" *> bracket '[' ']' nat)
+
+basicProperty = Basic <$> propIdent <*> list1 propValue
 propIdent = String.fromList <$> list1 ucLetter
 ucLetter = charInStr alphaUpper
 
