@@ -30,6 +30,8 @@ infixl 4 <$>
   Err (e0, _) ->
     Result.formatError (\(e1, ss') -> (e0 ++ " OR " ++ e1, ss')) <| p1 ss
 infixl 3 <|>
+lift f val ss = let lifter = (flip (,) ss)
+                in Result.formatError lifter <| Result.map lifter <| f val
 
 eos result ss = case String.uncons ss of
   Nothing -> Ok result
@@ -42,6 +44,9 @@ char ch = let errMsg = "expected character '" ++ String.fromChar ch ++ "'"
 charInStr str =
   charPred ("expected character from \"" ++ str ++ "\"") <|
   flip Set.member <| Set.fromList <| String.toList str
+string str =
+  let folder ch cs = (::) <$> char ch <*> cs
+  in String.fromList <$> (List.foldr folder (pure []) <| String.toList str)
 list0 parse ss =
   let loop ss =
     let do = (::) <$> parse <*> loop
@@ -68,4 +73,9 @@ valueTextChar =
   char '\\' *> charPred "expected any character" (\_ -> True) <|>
   charPred "expected non-']' character" (\ch -> ch /= ']')
 
+nat = String.fromList <$> list1 digit >>= lift String.toInt
+digit = charInStr digits
 alphaUpper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+alphaLower = String.toLower alphaUpper
+alphaLowerUpper = alphaLower ++ alphaUpper
+digits = String.concat <| List.map toString [0..9]
