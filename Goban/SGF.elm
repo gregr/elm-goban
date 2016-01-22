@@ -45,20 +45,23 @@ list0 parse ss =
     in Ok <| Result.withDefault ([], ss) <| do ss
   in loop ss
 list1 parse = (::) <$> parse <*> list0 parse
+wspace =
+  list0 <| charPred "expected whitespace" <| flip Set.member <| Set.fromList <|
+  String.toList " \t\v\n\r"
+bracket lch rch p0 = wspace *> char lch *> wspace *> p0 <* wspace <* char rch
 
-collection = list1 gameTree <* eos
-gameTree ss =
-  (char '(' *> (GameTree <$> sequence) <*> list0 gameTree <* char ')') ss
+collection = list1 gameTree <* wspace <* eos
+gameTree ss = (bracket '(' ')' <| GameTree <$> sequence <*> list0 gameTree) ss
 sequence = list1 node
-node = char ';' *> list0 property
-property = (,) <$> propIdent <*> list1 propValue
+node = wspace *> char ';' *> list0 property
+property = wspace *> ((,) <$> propIdent <*> list1 propValue)
 
 propIdent = String.fromList <$> list1 ucLetter
 ucLetter =
   charPred "expected uppercase letter" <| flip Set.member <| Set.fromList <|
   String.toList "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
-propValue = char '[' *> valueText <* char ']'
+propValue = bracket '[' ']' valueText
 valueText = String.fromList <$> list0 valueTextChar
 valueTextChar =
   char '\\' *> charPred "expected any character" (\_ -> True) <|>
