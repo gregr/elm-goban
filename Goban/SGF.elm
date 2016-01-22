@@ -31,8 +31,8 @@ infixl 4 <$>
     Result.formatError (\(e1, ss') -> (e0 ++ " OR " ++ e1, ss')) <| p1 ss
 infixl 3 <|>
 
-eos ss = case String.uncons ss of
-  Nothing -> Ok ((), ss)
+eos result ss = case String.uncons ss of
+  Nothing -> Ok result
   Just _ -> Err ("expected end of string", ss)
 charPred errMsg pred ss = case String.uncons ss of
   Nothing -> Err (errMsg, ss)
@@ -53,7 +53,7 @@ wspace =
   String.toList " \t\v\n\r"
 bracket lch rch p0 = wspace *> char lch *> wspace *> p0 <* wspace <* char rch
 
-collection = list1 gameTree <* wspace <* eos
+collection = list1 gameTree <* wspace >>= eos
 gameTree ss = (bracket '(' ')' <| GameTree <$> sequence <*> list0 gameTree) ss
 sequence = list1 node
 node = wspace *> char ';' *> list0 property
