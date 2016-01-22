@@ -39,6 +39,9 @@ charPred errMsg pred ss = case String.uncons ss of
   Just (ch, ss') -> if pred ch then Ok (ch, ss') else Err (errMsg, ss')
 char ch = let errMsg = "expected character '" ++ String.fromChar ch ++ "'"
           in charPred errMsg (flip (==) ch)
+charInStr str =
+  charPred ("expected character from \"" ++ str ++ "\"") <|
+  flip Set.member <| Set.fromList <| String.toList str
 list0 parse ss =
   let loop ss =
     let do = (::) <$> parse <*> loop
@@ -57,12 +60,12 @@ node = wspace *> char ';' *> list0 property
 property = wspace *> ((,) <$> propIdent <*> list1 propValue)
 
 propIdent = String.fromList <$> list1 ucLetter
-ucLetter =
-  charPred "expected uppercase letter" <| flip Set.member <| Set.fromList <|
-  String.toList "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+ucLetter = charInStr alphaUpper
 
 propValue = bracket '[' ']' valueText
 valueText = String.fromList <$> list0 valueTextChar
 valueTextChar =
   char '\\' *> charPred "expected any character" (\_ -> True) <|>
   charPred "expected non-']' character" (\ch -> ch /= ']')
+
+alphaUpper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
