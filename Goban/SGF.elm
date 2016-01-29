@@ -163,7 +163,7 @@ addProperty =
   let prop color ident = string ident *> (Add color <$> list1 pointValue)
   in prop AE "AE" <|> prop AB "AB" <|> prop AW "AW"
 pointValue = bracket '[' ']' pointValueText
-pointValueText = (,) <$> pointLetter <*> pointLetter
+pointValueText = (,) <$> pointLetter <*> ((\l -> 20 - l) <$> pointLetter)
 pointLetter =
   String.fromChar <$> charInStr alphaLowerUpper >>=
   lift (\letter -> case String.indices letter alphaLowerUpper of
