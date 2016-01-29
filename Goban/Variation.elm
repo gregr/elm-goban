@@ -60,12 +60,26 @@ edit op cursor =
 put : GP.Position -> VCursor a -> VCursor a
 put pos = edit (\_ -> pos)
 
--- TODO: search for existing alt with same position
+findNext : GP.Position -> VCursor a -> Maybe (VCursor a)
+findNext pos vcur =
+  let enumerate mvcur =
+        Maybe.withDefault [] <|
+        Maybe.map (\vc -> vc::enumerate (nextAlt vc)) mvcur
+      matches (VTree {position}) = GP.equal pos position
+      alts = List.filterMap nextPos <| enumerate <| Just <| firstAlt vcur
+  in case List.filter (matches << .focus) alts of
+    [] -> Nothing
+    match::_ -> Just match
+
 add : GP.Position -> a -> VCursor a -> VCursor a
-add pos metadata cursor =
+add pos metadata cursor = case findNext pos cursor of
+  Nothing -> addForced pos metadata cursor
+  Just result -> result
+
+addForced pos metadata cursor =
   let focus' = newAlt (VTree { position = pos
-                              , metadata = metadata
-                              , children = Nothing }) cursor.focus
+                             , metadata = metadata
+                             , children = Nothing }) cursor.focus
       cursor' = { cursor | focus = focus' }
   in Maybe.withDefault cursor' <| nextPos cursor'
 
@@ -119,3 +133,6 @@ prevAlt =
                             , next = current::next }
             in Just <| VTree { vt | children = alts }
   in withFocus prevAltVT
+
+firstAlt : VCursor a -> VCursor a
+firstAlt vcur = Maybe.withDefault vcur <| Maybe.map firstAlt <| prevAlt vcur

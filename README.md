@@ -5,7 +5,6 @@ Try the [interactive example](http://www.gregrosenblatt.com/elm-goban/)!  Curren
 ## TODO
 
 - variation trees
-    - add: merge with alternative containing identical move, if any
     - simple whole-variation ko recognition
         - check for identical positions in a particular variation
             - Zobrist hashing?
