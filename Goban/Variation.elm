@@ -24,13 +24,16 @@ type alias Context a =
 
 type alias VCursor a = { focus : VTree a, ancestors : List (Context a) }
 
-empty : Int -> a -> VCursor a
-empty size metadata =
-  { focus = VTree { position = GP.empty size
+init : GP.Position -> a -> VCursor a
+init pos metadata =
+  { focus = VTree { position = pos
                   , metadata = metadata
                   , children = Nothing }
   , ancestors = []
   }
+
+empty : Int -> a -> VCursor a
+empty size = init <| GP.empty size
 
 withFocus : (VTree a -> Maybe (VTree a)) -> VCursor a -> Maybe (VCursor a)
 withFocus op cursor =
