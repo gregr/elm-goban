@@ -1,4 +1,5 @@
 import Goban.Position as GP
+import Goban.SGF as GS
 import Goban.UI as GUI
 import Goban.Variation as GV
 import Graphics.Collage as GC
@@ -25,15 +26,13 @@ view pos clickPos = GE.show (posToCoord pos) `GE.above` GE.show (posToCoord clic
 mouseView = Signal.map2 view Mouse.position <| Signal.sampleOn Mouse.clicks Mouse.position
 arrowView = Signal.map GE.show <| Keyboard.arrows
 
-type alias Metadata = { nextStone : GP.Stone }
-
 placeStone mc vcur =
   let (GV.VTree vt) = vcur.focus
-      {nextStone} = vt.metadata
+      {stoneToPlay} = vt.metadata
       mcoord = posToCoord mc
-  in case mcoord `Maybe.andThen` \coord -> GP.add nextStone coord vt.position of
+  in case mcoord `Maybe.andThen` \coord -> GP.add stoneToPlay coord vt.position of
        Nothing -> vcur
-       Just (pos, _) -> GV.add pos { nextStone = (GP.invertStone nextStone) } vcur
+       Just (pos, _) -> GV.add pos (GS.playMetadata stoneToPlay GS.emptyMetadata) vcur
 
 navigateVariations {x, y} vcur =
   Maybe.withDefault vcur <|
@@ -68,7 +67,8 @@ iclicks = Signal.map IClick <| Signal.sampleOn Mouse.clicks Mouse.position
 iarrows = Signal.map IArrow Keyboard.arrows
 input = Signal.merge iclicks iarrows
 
-variationState = Signal.foldp update (GV.empty cedge { nextStone = GP.Black }) input
+initVar = GV.empty cedge GS.emptyMetadata
+variationState = Signal.foldp update initVar input
 variationView = Signal.map (positionElement << GV.get) variationState
 variationInfoView = Signal.map variationInfo variationState
 
