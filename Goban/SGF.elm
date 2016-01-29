@@ -10,9 +10,11 @@ type alias Collection = List GameTree
 type GameTree = GameTree Sequence (List GameTree)
 type alias Sequence = List Node
 type alias Node = List Property
-type Property = Basic PropIdent (List PropValue)
-              | Play Color Point | Add Color (List Point) | Size Size
-type Color = E | B | W
+type Property = Basic BasicProperty
+              | Play PlayColor Point | Add AddColor (List Point) | Size Size
+type AddColor = AE | AB | AW
+type PlayColor = PB | PW
+type alias BasicProperty = (PropIdent, List PropValue)
 type alias PropIdent = String
 type alias PropValue = String
 type alias Size = Int
@@ -71,10 +73,10 @@ property =
 
 playProperty =
   let prop color ident = string ident *> (Play color <$> pointValue)
-  in prop B "B" <|> prop W "W"
+  in prop PB "B" <|> prop PW "W"
 addProperty =
   let prop color ident = string ident *> (Add color <$> list1 pointValue)
-  in prop E "AE" <|> prop B "AB" <|> prop W "AW"
+  in prop AE "AE" <|> prop AB "AB" <|> prop AW "AW"
 pointValue = bracket '[' ']' pointValueText
 pointValueText = (,) <$> pointLetter <*> pointLetter
 pointLetter =
@@ -84,7 +86,7 @@ pointLetter =
     _ -> Err <| "invalid letter '" ++ letter ++ "'")
 sizeProperty = Size <$> (string "SZ" *> bracket '[' ']' nat)
 
-basicProperty = Basic <$> propIdent <*> list1 propValue
+basicProperty = Basic <$> ((,) <$> propIdent <*> list1 propValue)
 propIdent = String.fromList <$> list1 ucLetter
 ucLetter = charInStr alphaUpper
 
