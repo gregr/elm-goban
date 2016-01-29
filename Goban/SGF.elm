@@ -30,9 +30,13 @@ playMetadata stone md =
   { md | stoneToPlay = (GP.invertStone stone), setup = False }
 addMetadata md = { md | setup = True }
 basicMetadata bp md = { md | properties = bp::md.properties }
+stoneToPlayMetadata stone md = { md | stoneToPlay = stone }
 updateMetadata prop md = case prop of
   (Play color _) -> playMetadata (colorToStone color) md
   (Add _ _) -> addMetadata md
+  (Basic ("HA", _)) -> stoneToPlayMetadata GP.White md
+  (Basic ("PL", ["B"])) -> stoneToPlayMetadata GP.Black md
+  (Basic ("PL", ["W"])) -> stoneToPlayMetadata GP.White md
   (Basic bp) -> basicMetadata bp md
   _ -> md
 
