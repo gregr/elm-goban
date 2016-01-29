@@ -1,10 +1,95 @@
 module Goban.SGF
   where
 
+import Goban.Position as GP
+import Goban.Variation as GV
+
 import Set
 import String
 
--- TODO: toVariation, fromVariation
+type alias Metadata =
+  { stoneToPlay : GP.Stone
+  , properties : List BasicProperty
+  }
+
+-- TODO:
+--fromVariation vcur =
+
+toVariation : String -> Result (String, String) (GV.VCursor Metadata)
+toVariation ss =
+  collection ss `Result.andThen`
+  \gts -> case gts of
+    [gt] -> case gtToVariation gt of
+      Nothing -> Err ("invalid game-tree", "")
+      Just vcur -> Ok vcur
+    _ -> Err ("expected one game-tree", "")
+
+initMetadata = { stoneToPlay = GP.Black, properties = [] }
+updateMetadata prop md = case prop of
+  (Play color _) -> { md | stoneToPlay = GP.invertStone <| colorToStone color }
+  _ -> md
+
+gtToVariation gt =
+  let (GameTree seq gts) = gt
+      mvt = case seq of
+        [] -> Nothing
+        setup::_ -> case List.filterMap maybeSize setup of
+          sz::_ -> Just <| applyGameTree (GP.empty sz, initMetadata) gt
+          _ -> Nothing
+  in Maybe.map (\vt -> { focus = vt, ancestors = [] }) mvt
+
+applyGameTree pmd (GameTree seq gts) =
+  let (pmd', trail) = applySeq pmd seq
+      alts = List.map (applyGameTree pmd') gts
+      children = case alts of
+        [] -> Nothing
+        alt0::alts' -> Just { current = alt0, prev = [], next = alts' }
+      (pos, md) = pmd'
+      last = GV.VTree { position = pos, metadata = md, children = children }
+      newVT (pos, md) next =
+        GV.VTree { position = pos
+                 , metadata = md
+                 , children = Just { current = next, prev = [], next = []} }
+  in List.foldl newVT last trail
+
+applySeq pmd seq =
+  let (last, trail) = List.foldl applyNode (pmd, []) seq
+  in (last, List.drop 1 trail)
+
+applyNode node ((pos, md), trail) =
+  let props = List.filterMap maybeBasic node
+      md' = List.foldl updateMetadata md node
+      pos' = applyProps pos node
+      pmd = (pos', md')
+  in (pmd, pmd::trail)
+
+applyProps = List.foldl applyProp
+applyProp prop pos = case prop of
+  Play color pt ->
+    Maybe.withDefault pos <| Maybe.map fst <|
+    GP.add (colorToStone color) pt pos
+  Add color ps -> let folder pt pos =
+                        let add stone pos =
+                              Maybe.withDefault pos <| Maybe.map fst <|
+                              GP.add stone pt pos
+                            update = case color of
+                              AE -> identity
+                              AB -> add GP.Black
+                              AW -> add GP.White
+                        in update <| GP.remove pt pos
+                  in List.foldl folder pos ps
+  _ -> pos
+
+colorToStone color = case color of
+  PB -> GP.Black
+  PW -> GP.White
+
+maybeSize prop = case prop of
+  Size sz -> Just sz
+  _ -> Nothing
+maybeBasic prop = case prop of
+  Basic bp -> Just bp
+  _ -> Nothing
 
 type alias Collection = List GameTree
 type GameTree = GameTree Sequence (List GameTree)
