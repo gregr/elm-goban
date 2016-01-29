@@ -56,6 +56,11 @@ diff pos0 pos1 =
       removed = Dict.keys <| Dict.diff g0 g1
   in { added = added, removed = removed }
 
+equal : Position -> Position -> Bool
+equal p0 p1 =
+  let {added, removed} = diff p0 p1
+  in List.isEmpty added && List.isEmpty removed
+
 captured position stone points =
   let friendly (_, s) = stone == s
       captured1 point ((seen, safe), found) =
