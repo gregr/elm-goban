@@ -13,8 +13,70 @@ type alias Metadata =
   , properties : List BasicProperty
   }
 
--- TODO:
---fromVariation vcur =
+fromVariation : GV.VCursor Metadata -> String
+fromVariation vcur = printRootTree (GV.firstPos vcur).focus
+
+printRootTree vt =
+  let (GV.VTree {position}) = vt
+      tree = printPosition (GP.empty position.size) vt
+  in "(;" ++ printRoot position.size ++ tree ++ ")"
+printPosition p0 (GV.VTree {position, metadata, children}) =
+  let alts = case children of
+        Nothing -> []
+        Just {current, prev, next} -> List.reverse prev ++ current::next
+  in printDiff p0 position metadata ++ printAlts position alts
+printAlts parent alts = case alts of
+  [] -> ""
+  [single] -> printSeq parent single
+  _ -> String.concat <| List.map (printTree parent) alts
+printTree p0 vt = "(;" ++ printPosition p0 vt ++ ")"
+printSeq p0 vt = ";" ++ printPosition p0 vt
+printRoot size =
+  "GM[1]FF[4]CA[UTF-8]AP[elm-goban:0]ST[2]SZ[" ++ toString size ++ "]"
+charToStr char = case char of
+  ']' -> "\\]"
+  '\\' -> "\\"
+  _ -> String.fromChar char
+toValText str =
+  "[" ++ (String.concat <| List.map charToStr <| String.toList str) ++ "]"
+printBasic (ident, vals) = case ident of
+  "GM" -> ""
+  "FF" -> ""
+  "CA" -> ""
+  "AP" -> ""
+  "ST" -> ""
+  "SZ" -> ""
+  _ -> ident ++ (String.concat <| List.map toValText vals)
+printMetadata (GV.VTree {metadata}) =
+  String.concat <| List.map printBasic metadata.properties
+coordToLetter c =
+  String.fromChar <| Maybe.withDefault '0' <| Maybe.map fst <| String.uncons <|
+  String.slice (c - 1) c alphaLowerUpper
+printPoint (x, y) = "[" ++ coordToLetter x ++ coordToLetter (20 - y) ++ "]"
+printAdd ident ps = case List.map printPoint ps of
+  [] -> ""
+  pstrs -> ident ++ String.concat pstrs
+printAdds added removed =
+  let isBlack (_, stone) = case stone of
+        GP.Black -> True
+        GP.White -> False
+      (bpss, wpss) = List.partition isBlack added
+      bps = List.map fst bpss
+      wps = List.map fst wpss
+      es = printAdd "AE" removed
+      bs = printAdd "AB" bps
+      ws = printAdd "AW" wps
+  in es ++ bs ++ ws
+printPlay stone point = let ident = case stone of
+                              GP.Black -> "B"
+                              GP.White -> "W"
+                        in ident ++ printPoint point
+printDiff p0 p1 {setup} =
+  let {added, removed} = GP.diff p0 p1
+  in if setup then printAdds added removed
+     else case added of
+       [(pt, stone)] -> printPlay stone pt
+       _ -> printAdds added removed
 
 toVariations : String -> Result (String, String) (List (GV.VCursor Metadata))
 toVariations ss =
