@@ -37,9 +37,6 @@ Try the [interactive example](http://www.gregrosenblatt.com/elm-goban/)!  Curren
         - select coord and traverse game tree until that coord is played
     - cutting/grafting of variation tree
 
-- sgf processing
-    - fromVariation
-
 - misc
     - s/Coord/Point
     - clean up module interfaces
