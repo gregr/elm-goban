@@ -91,6 +91,9 @@ prevPos {focus, ancestors} = case ancestors of
                    , children = children }
     in Just { focus = vt, ancestors = ancestors}
 
+firstPos : VCursor a -> VCursor a
+firstPos vcur = Maybe.withDefault vcur <| Maybe.map firstPos <| prevPos vcur
+
 nextAlt : VCursor a -> Maybe (VCursor a)
 nextAlt =
   let nextAltVT (VTree vt) =
