@@ -38,7 +38,6 @@ Try the [interactive example](http://www.gregrosenblatt.com/elm-goban/)!  Curren
     - cutting/grafting of variation tree
 
 - misc
-    - s/Coord/Point
     - clean up module interfaces
     - docs
     - exposed-modules

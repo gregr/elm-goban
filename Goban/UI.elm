@@ -12,11 +12,8 @@ type alias PositionFormSpec =
   , stoneDiameter : Float
   }
 
-testPositionFormSpec : PositionFormSpec
-testPositionFormSpec = { edgeSize = 9, margin = 1, stoneDiameter = 20 }
-
-starCoords : number -> List (Float, Float)
-starCoords edgeSize =
+starPoints : number -> List (Float, Float)
+starPoints edgeSize =
   let mid = (edgeSize + 1) / 2
       h0 = if edgeSize >= 12 then 4 else 3
       h1 = edgeSize - h0 + 1
@@ -33,21 +30,21 @@ defaultBoardForm : PositionFormSpec -> GC.Form
 defaultBoardForm {edgeSize, margin, stoneDiameter} =
   let edge = toFloat edgeSize
       scaled x = x * stoneDiameter
-      scaledCoord (x, y) = (scaled x, scaled y)
+      scaledPoint (x, y) = (scaled x, scaled y)
       surface = let square = GC.square <| scaled <| edge + margin
                     center = GC.filled Color.yellow square
                     border = GC.outlined (GC.solid Color.black) square
                 in GC.group [center, border]
       line c0 c1 =
         GC.traced (GC.solid Color.black) <|
-        GC.segment (scaledCoord c0) (scaledCoord c1)
+        GC.segment (scaledPoint c0) (scaledPoint c1)
       hline y = line (1, y) (edge, y)
       vline x = line (x, 1) (x, edge)
       ixs = [1..edge]
       ints = GC.group <| List.map hline ixs ++ List.map vline ixs
       star = GC.filled (Color.black) <| GC.circle (stoneDiameter / 6)
-      starAt coord = GC.move (scaledCoord coord) star
-      stars = GC.group <| List.map starAt <| starCoords edge
+      starAt point = GC.move (scaledPoint point) star
+      stars = GC.group <| List.map starAt <| starPoints edge
       halflen = scaled <| -(edge + 1) / 2
       markings = GC.move (halflen, halflen) <| GC.group [ints, stars]
       all = GC.group [surface, markings]
@@ -56,7 +53,7 @@ defaultBoardForm {edgeSize, margin, stoneDiameter} =
 defaultStonesForm : PositionFormSpec -> GP.Position -> GC.Form
 defaultStonesForm {edgeSize, stoneDiameter} =
   let scaled x = x * stoneDiameter
-      scaledCoord (x, y) = (scaled <| toFloat x, scaled <| toFloat y)
+      scaledPoint (x, y) = (scaled <| toFloat x, scaled <| toFloat y)
       form color = let circle = GC.circle <| stoneDiameter / 2
                        center = GC.filled color circle
                        border = GC.outlined (GC.solid Color.black) circle
@@ -66,11 +63,11 @@ defaultStonesForm {edgeSize, stoneDiameter} =
       stoneForm st = case st of
         GP.Black -> black
         GP.White -> white
-      stoneFormMoved coord = GC.move (scaledCoord coord) << stoneForm
+      stoneFormMoved point = GC.move (scaledPoint point) << stoneForm
       ixs = [1 .. edgeSize]
       halflen = scaled <| -(toFloat edgeSize + 1) / 2
       stonesForm pos =
-        let cell coord = Maybe.map (stoneFormMoved coord) <| GP.get pos coord
+        let cell point = Maybe.map (stoneFormMoved point) <| GP.get pos point
             row ypos = List.filterMap (\x -> cell (x, ypos)) ixs
             stones = GC.group <| List.concat <| List.map row ixs
         in GC.move (halflen, halflen) stones
@@ -83,17 +80,17 @@ defaultPositionForm pfspec =
       form pos = GC.group [bf, stonesWith pos]
   in form
 
-type alias Coord = (Int, Int)
+type alias Point = (Int, Int)
 
-absoluteToCoord : Coord -> Float -> PositionFormSpec -> Coord -> Maybe GP.Coord
-absoluteToCoord (xc, yc) scale {edgeSize, margin, stoneDiameter} =
+absoluteToPoint : Point -> Float -> PositionFormSpec -> Point -> Maybe GP.Point
+absoluteToPoint (xc, yc) scale {edgeSize, margin, stoneDiameter} =
   let csd = scale * stoneDiameter
       trans delta = 1 + (round <| delta / csd)
       xo = toFloat xc + csd*(margin + 1)/2
       yo = toFloat yc + csd*((margin + 1)/2 + toFloat edgeSize - 1)
-      toCoord (xa, ya) =
+      toPoint (xa, ya) =
         let x = trans (toFloat xa - xo)
             y = trans (yo - toFloat ya)
             legal p = p >= 1 && p <= edgeSize
         in if legal x && legal y then Just (x, y) else Nothing
-  in toCoord
+  in toPoint

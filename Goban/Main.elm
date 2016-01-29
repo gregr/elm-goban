@@ -20,17 +20,17 @@ positionElement =
       form pos = GC.collage cdim cdim [GC.scale cscale <| dpf pos]
   in form
 
-posToCoord = GUI.absoluteToCoord (coffset, coffset) cscale cpfs
+posToPoint = GUI.absoluteToPoint (coffset, coffset) cscale cpfs
 
-view pos clickPos = GE.show (posToCoord pos) `GE.above` GE.show (posToCoord clickPos) `GE.above` GE.show pos `GE.above` GE.show clickPos
+view pos clickPos = GE.show (posToPoint pos) `GE.above` GE.show (posToPoint clickPos) `GE.above` GE.show pos `GE.above` GE.show clickPos
 mouseView = Signal.map2 view Mouse.position <| Signal.sampleOn Mouse.clicks Mouse.position
 arrowView = Signal.map GE.show <| Keyboard.arrows
 
 placeStone mc vcur =
   let (GV.VTree vt) = vcur.focus
       {stoneToPlay} = vt.metadata
-      mcoord = posToCoord mc
-  in case mcoord `Maybe.andThen` \coord -> GP.add stoneToPlay coord vt.position of
+      mpoint = posToPoint mc
+  in case mpoint `Maybe.andThen` \point -> GP.add stoneToPlay point vt.position of
        Nothing -> vcur
        Just (pos, _) -> GV.add pos (GS.playMetadata stoneToPlay GS.emptyMetadata) vcur
 
@@ -62,7 +62,7 @@ variationInfo vcur =
       altInfo = GE.leftAligned <| Text.fromString <| "Variation " ++ toString (prevCount + 1) ++ " of " ++ toString (prevCount + 1 + nextCount)
   in moveInfo `GE.above` altInfo
 
-type GameInput = IClick GUI.Coord | IArrow { x : Int, y : Int }
+type GameInput = IClick GUI.Point | IArrow { x : Int, y : Int }
 iclicks = Signal.map IClick <| Signal.sampleOn Mouse.clicks Mouse.position
 iarrows = Signal.map IArrow Keyboard.arrows
 input = Signal.merge iclicks iarrows
