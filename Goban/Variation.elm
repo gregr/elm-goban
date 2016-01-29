@@ -24,6 +24,14 @@ type alias Context a =
 
 type alias VCursor a = { focus : VTree a, ancestors : List (Context a) }
 
+newAlt : VTree a -> VTree a -> VTree a
+newAlt alt (VTree vt) =
+  let alts' = case vt.children of
+        Nothing -> { current = alt, prev = [], next = [] }
+        Just alts ->
+          { alts | current = alt, prev = alts.current::alts.prev }
+  in VTree { vt | children = Just alts' }
+
 init : GP.Position -> a -> VCursor a
 init pos metadata =
   { focus = VTree { position = pos
@@ -55,20 +63,11 @@ put pos = edit (\_ -> pos)
 -- TODO: search for existing alt with same position
 add : GP.Position -> a -> VCursor a -> VCursor a
 add pos metadata cursor =
-  let cursor' = newAlt (VTree { position = pos
+  let focus' = newAlt (VTree { position = pos
                               , metadata = metadata
-                              , children = Nothing }) cursor
+                              , children = Nothing }) cursor.focus
+      cursor' = { cursor | focus = focus' }
   in Maybe.withDefault cursor' <| nextPos cursor'
-
-newAlt : VTree a -> VCursor a -> VCursor a
-newAlt alt cursor =
-  let op (VTree focus) =
-        let alts' = case focus.children of
-              Nothing -> { current = alt, prev = [], next = [] }
-              Just alts ->
-                { alts | current = alt, prev = alts.current::alts.prev }
-        in VTree { focus | children = Just alts' }
-  in { cursor | focus = op cursor.focus }
 
 nextPos : VCursor a -> Maybe (VCursor a)
 nextPos {focus, ancestors} =
