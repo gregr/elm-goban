@@ -16,6 +16,10 @@ type alias Metadata =
 -- TODO:
 --fromVariation vcur =
 
+toVariations : String -> Result (String, String) (List (GV.VCursor Metadata))
+toVariations ss =
+  collection ss `Result.andThen` (Ok << List.filterMap gtToVariation)
+
 toVariation : String -> Result (String, String) (GV.VCursor Metadata)
 toVariation ss =
   collection ss `Result.andThen`
