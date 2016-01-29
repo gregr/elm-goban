@@ -5,23 +5,22 @@ Try the [interactive example](http://www.gregrosenblatt.com/elm-goban/)!  Curren
 ## TODO
 
 - variation trees
-    - Position
-        - board/stone/group annotations
-            - commentary
-            - labels
-            - position of unusual illegal moves (ko)
-            - position of the last move played, etc.
-            - whose turn is it?
+    - add: merge with alternative containing identical move, if any
     - simple whole-variation ko recognition
         - check for identical positions in a particular variation
             - Zobrist hashing?
-    - insertion/deletion for cutting/grafting
 
 - visualization
     - board and stones (possibly only a portion of a full board)
         - coordinate axis labels
         - location/stone labels, shadings, highlights
         - move/capture/arbitrary transitions, possibly animations
+    - metadata
+        - commentary
+        - labels
+        - position of unusual illegal moves (ko)
+        - position of the last move played, etc.
+        - whose turn is it?
     - variation tree
         - horizontal layout of position icons with edges to prev/next position
         - icons summarize information about a position
@@ -39,3 +38,10 @@ Try the [interactive example](http://www.gregrosenblatt.com/elm-goban/)!  Curren
     - cutting/grafting of variation tree
 
 - sgf processing
+    - fromVariation
+
+- misc
+    - s/Coord/Point
+    - clean up module interfaces
+    - docs
+    - exposed-modules
