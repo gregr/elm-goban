@@ -9,6 +9,7 @@ import String
 
 type alias Metadata =
   { stoneToPlay : GP.Stone
+  , setup : Bool
   , properties : List BasicProperty
   }
 
@@ -24,17 +25,23 @@ toVariation ss =
       Just vcur -> Ok vcur
     _ -> Err ("expected one game-tree", "")
 
-initMetadata = { stoneToPlay = GP.Black, properties = [] }
+emptyMetadata = { stoneToPlay = GP.Black, setup = True, properties = [] }
+playMetadata stone md =
+  { md | stoneToPlay = (GP.invertStone stone), setup = False }
+addMetadata md = { md | setup = True }
+basicMetadata bp md = { md | properties = bp::md.properties }
 updateMetadata prop md = case prop of
-  (Play color _) -> { md | stoneToPlay = GP.invertStone <| colorToStone color }
+  (Play color _) -> playMetadata (colorToStone color) md
+  (Add _ _) -> addMetadata md
+  (Basic bp) -> basicMetadata bp md
   _ -> md
 
 gtToVariation gt =
   let (GameTree seq gts) = gt
       mvt = case seq of
         [] -> Nothing
-        setup::_ -> case List.filterMap maybeSize setup of
-          sz::_ -> Just <| applyGameTree (GP.empty sz, initMetadata) gt
+        root::_ -> case List.filterMap maybeSize root of
+          sz::_ -> Just <| applyGameTree (GP.empty sz, emptyMetadata) gt
           _ -> Nothing
   in Maybe.map (\vt -> { focus = vt, ancestors = [] }) mvt
 
@@ -57,8 +64,7 @@ applySeq pmd seq =
   in (last, List.drop 1 trail)
 
 applyNode node ((pos, md), trail) =
-  let props = List.filterMap maybeBasic node
-      md' = List.foldl updateMetadata md node
+  let md' = List.foldl updateMetadata { md | properties = [] } node
       pos' = applyProps pos node
       pmd = (pos', md')
   in (pmd, pmd::trail)
@@ -86,9 +92,6 @@ colorToStone color = case color of
 
 maybeSize prop = case prop of
   Size sz -> Just sz
-  _ -> Nothing
-maybeBasic prop = case prop of
-  Basic bp -> Just bp
   _ -> Nothing
 
 type alias Collection = List GameTree
