@@ -6697,6 +6697,13 @@ Elm.Goban.Position.make = function (_elm) {
       });
       return A2($List.foldr,partition,{ctor: "_Tuple2",_0: _U.list([]),_1: _U.list([])});
    }();
+   var diff = F2(function (pos0,pos1) {
+      var g1 = pos1.grid;
+      var g0 = pos0.grid;
+      var added = $Dict.toList(A2($Dict.diff,g1,g0));
+      var removed = $Dict.keys(A2($Dict.diff,g0,g1));
+      return {added: added,removed: removed};
+   });
    var remove = F2(function (coord,position) {    return _U.update(position,{grid: A2($Dict.remove,coord,position.grid)});});
    var get = F2(function (position,coord) {    return A2($Dict.get,coord,position.grid);});
    var captured = F3(function (position,stone,coords) {
@@ -6797,9 +6804,599 @@ Elm.Goban.Position.make = function (_elm) {
                                        ,get: get
                                        ,remove: remove
                                        ,add: add
+                                       ,diff: diff
                                        ,captured: captured
                                        ,partitionKV: partitionKV
                                        ,adjacent: adjacent};
+};Elm.Goban = Elm.Goban || {};
+Elm.Goban.Variation = Elm.Goban.Variation || {};
+Elm.Goban.Variation.make = function (_elm) {
+   "use strict";
+   _elm.Goban = _elm.Goban || {};
+   _elm.Goban.Variation = _elm.Goban.Variation || {};
+   if (_elm.Goban.Variation.values) return _elm.Goban.Variation.values;
+   var _U = Elm.Native.Utils.make(_elm),
+   $Basics = Elm.Basics.make(_elm),
+   $Debug = Elm.Debug.make(_elm),
+   $Goban$Position = Elm.Goban.Position.make(_elm),
+   $List = Elm.List.make(_elm),
+   $Maybe = Elm.Maybe.make(_elm),
+   $Result = Elm.Result.make(_elm),
+   $Signal = Elm.Signal.make(_elm);
+   var _op = {};
+   var nextPos = function (_p0) {
+      var _p1 = _p0;
+      var nextPosVT = F2(function (ancestors,_p2) {
+         var _p3 = _p2;
+         return A2($Maybe.andThen,
+         _p3._0.children,
+         function (_p4) {
+            var _p5 = _p4;
+            var parent = {position: _p3._0.position,metadata: _p3._0.metadata,prev: _p5.prev,next: _p5.next};
+            return $Maybe.Just({focus: _p5.current,ancestors: A2($List._op["::"],parent,ancestors)});
+         });
+      });
+      return A2(nextPosVT,_p1.ancestors,_p1.focus);
+   };
+   var get = function (_p6) {    var _p7 = _p6;var _p8 = _p7.focus;var position = _p8._0.position;return position;};
+   var withFocus = F2(function (op,cursor) {
+      return A2($Maybe.andThen,op(cursor.focus),function (focus) {    return $Maybe.Just(_U.update(cursor,{focus: focus}));});
+   });
+   var VCursor = F2(function (a,b) {    return {focus: a,ancestors: b};});
+   var Context = F4(function (a,b,c,d) {    return {position: a,metadata: b,prev: c,next: d};});
+   var VTree = function (a) {    return {ctor: "VTree",_0: a};};
+   var newAlt = F2(function (alt,_p9) {
+      var _p10 = _p9;
+      var _p13 = _p10._0;
+      var alts$ = function () {
+         var _p11 = _p13.children;
+         if (_p11.ctor === "Nothing") {
+               return {current: alt,prev: _U.list([]),next: _U.list([])};
+            } else {
+               var _p12 = _p11._0;
+               return _U.update(_p12,{current: alt,prev: A2($List._op["::"],_p12.current,_p12.prev)});
+            }
+      }();
+      return VTree(_U.update(_p13,{children: $Maybe.Just(alts$)}));
+   });
+   var init = F2(function (pos,metadata) {    return {focus: VTree({position: pos,metadata: metadata,children: $Maybe.Nothing}),ancestors: _U.list([])};});
+   var empty = function (size) {    return init($Goban$Position.empty(size));};
+   var edit = F2(function (op,cursor) {
+      var trans = function (_p14) {    var _p15 = _p14;var _p16 = _p15._0;return VTree(_U.update(_p16,{position: op(_p16.position)}));};
+      return _U.update(cursor,{focus: trans(cursor.focus)});
+   });
+   var put = function (pos) {    return edit(function (_p17) {    return pos;});};
+   var add = F3(function (pos,metadata,cursor) {
+      var focus$ = A2(newAlt,VTree({position: pos,metadata: metadata,children: $Maybe.Nothing}),cursor.focus);
+      var cursor$ = _U.update(cursor,{focus: focus$});
+      return A2($Maybe.withDefault,cursor$,nextPos(cursor$));
+   });
+   var prevPos = function (_p18) {
+      var _p19 = _p18;
+      var _p20 = _p19.ancestors;
+      if (_p20.ctor === "[]") {
+            return $Maybe.Nothing;
+         } else {
+            var children = $Maybe.Just({current: _p19.focus,prev: _p20._0.prev,next: _p20._0.next});
+            var vt = VTree({position: _p20._0.position,metadata: _p20._0.metadata,children: children});
+            return $Maybe.Just({focus: vt,ancestors: _p20._1});
+         }
+   };
+   var firstPos = function (vcur) {    return A2($Maybe.withDefault,vcur,A2($Maybe.map,firstPos,prevPos(vcur)));};
+   var nextAlt = function () {
+      var nextAltVT = function (_p21) {
+         var _p22 = _p21;
+         var _p26 = _p22._0;
+         return A2($Maybe.andThen,
+         _p26.children,
+         function (_p23) {
+            var _p24 = _p23;
+            var _p25 = _p24.next;
+            if (_p25.ctor === "[]") {
+                  return $Maybe.Nothing;
+               } else {
+                  var alts = $Maybe.Just({current: _p25._0,prev: A2($List._op["::"],_p24.current,_p24.prev),next: _p25._1});
+                  return $Maybe.Just(VTree(_U.update(_p26,{children: alts})));
+               }
+         });
+      };
+      return withFocus(nextAltVT);
+   }();
+   var prevAlt = function () {
+      var prevAltVT = function (_p27) {
+         var _p28 = _p27;
+         var _p32 = _p28._0;
+         return A2($Maybe.andThen,
+         _p32.children,
+         function (_p29) {
+            var _p30 = _p29;
+            var _p31 = _p30.prev;
+            if (_p31.ctor === "[]") {
+                  return $Maybe.Nothing;
+               } else {
+                  var alts = $Maybe.Just({current: _p31._0,prev: _p31._1,next: A2($List._op["::"],_p30.current,_p30.next)});
+                  return $Maybe.Just(VTree(_U.update(_p32,{children: alts})));
+               }
+         });
+      };
+      return withFocus(prevAltVT);
+   }();
+   var Alts = F3(function (a,b,c) {    return {current: a,prev: b,next: c};});
+   return _elm.Goban.Variation.values = {_op: _op
+                                        ,Alts: Alts
+                                        ,VTree: VTree
+                                        ,Context: Context
+                                        ,VCursor: VCursor
+                                        ,newAlt: newAlt
+                                        ,init: init
+                                        ,empty: empty
+                                        ,withFocus: withFocus
+                                        ,get: get
+                                        ,edit: edit
+                                        ,put: put
+                                        ,add: add
+                                        ,nextPos: nextPos
+                                        ,prevPos: prevPos
+                                        ,firstPos: firstPos
+                                        ,nextAlt: nextAlt
+                                        ,prevAlt: prevAlt};
+};Elm.Goban = Elm.Goban || {};
+Elm.Goban.SGF = Elm.Goban.SGF || {};
+Elm.Goban.SGF.make = function (_elm) {
+   "use strict";
+   _elm.Goban = _elm.Goban || {};
+   _elm.Goban.SGF = _elm.Goban.SGF || {};
+   if (_elm.Goban.SGF.values) return _elm.Goban.SGF.values;
+   var _U = Elm.Native.Utils.make(_elm),
+   $Basics = Elm.Basics.make(_elm),
+   $Debug = Elm.Debug.make(_elm),
+   $Goban$Position = Elm.Goban.Position.make(_elm),
+   $Goban$Variation = Elm.Goban.Variation.make(_elm),
+   $List = Elm.List.make(_elm),
+   $Maybe = Elm.Maybe.make(_elm),
+   $Result = Elm.Result.make(_elm),
+   $Set = Elm.Set.make(_elm),
+   $Signal = Elm.Signal.make(_elm),
+   $String = Elm.String.make(_elm);
+   var _op = {};
+   var digits = $String.concat(A2($List.map,$Basics.toString,_U.range(0,9)));
+   var alphaUpper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+   var alphaLower = $String.toLower(alphaUpper);
+   var alphaLowerUpper = A2($Basics._op["++"],alphaLower,alphaUpper);
+   var charPred = F3(function (errMsg,pred,ss) {
+      var _p0 = $String.uncons(ss);
+      if (_p0.ctor === "Nothing") {
+            return $Result.Err({ctor: "_Tuple2",_0: errMsg,_1: ss});
+         } else {
+            var _p2 = _p0._0._1;
+            var _p1 = _p0._0._0;
+            return pred(_p1) ? $Result.Ok({ctor: "_Tuple2",_0: _p1,_1: _p2}) : $Result.Err({ctor: "_Tuple2",_0: errMsg,_1: _p2});
+         }
+   });
+   var $char = function (ch) {
+      var errMsg = A2($Basics._op["++"],"expected character \'",A2($Basics._op["++"],$String.fromChar(ch),"\'"));
+      return A2(charPred,errMsg,A2($Basics.flip,F2(function (x,y) {    return _U.eq(x,y);}),ch));
+   };
+   var charInStr = function (str) {
+      return A2(charPred,
+      A2($Basics._op["++"],"expected character from \"",A2($Basics._op["++"],str,"\"")),
+      A2($Basics.flip,$Set.member,$Set.fromList($String.toList(str))));
+   };
+   var ucLetter = charInStr(alphaUpper);
+   var digit = charInStr(digits);
+   var eos = F2(function (result,ss) {
+      var _p3 = $String.uncons(ss);
+      if (_p3.ctor === "Nothing") {
+            return $Result.Ok(result);
+         } else {
+            return $Result.Err({ctor: "_Tuple2",_0: "expected end of string",_1: ss});
+         }
+   });
+   var lift = F3(function (f,val,ss) {
+      var lifter = A2($Basics.flip,F2(function (v0,v1) {    return {ctor: "_Tuple2",_0: v0,_1: v1};}),ss);
+      return A2($Result.formatError,lifter,A2($Result.map,lifter,f(val)));
+   });
+   _op["<|>"] = F3(function (p0,p1,ss) {
+      var _p4 = p0(ss);
+      if (_p4.ctor === "Ok") {
+            return $Result.Ok(_p4._0);
+         } else {
+            return A2($Result.formatError,
+            function (_p5) {
+               var _p6 = _p5;
+               return {ctor: "_Tuple2",_0: A2($Basics._op["++"],_p4._0._0,A2($Basics._op["++"]," OR ",_p6._0)),_1: _p6._1};
+            },
+            p1(ss));
+         }
+   });
+   _op[">>="] = F3(function (p0,fp1,ss) {    return A2($Result.andThen,p0(ss),$Basics.uncurry(fp1));});
+   _op["*>"] = F2(function (p0,p1) {    return A2(_op[">>="],p0,function (_p7) {    return p1;});});
+   var valueTextChar = A2(_op["<|>"],
+   A2(_op["*>"],$char(_U.chr("\\")),A2(charPred,"expected any character",function (_p8) {    return true;})),
+   A2(charPred,"expected non-\']\' character",function (ch) {    return !_U.eq(ch,_U.chr("]"));}));
+   var pure = F2(function (val,ss) {    return $Result.Ok({ctor: "_Tuple2",_0: val,_1: ss});});
+   _op["<*"] = F2(function (p0,p1) {    return A2(_op[">>="],p0,function (r0) {    return A2(_op[">>="],p1,function (_p9) {    return pure(r0);});});});
+   _op["<*>"] = F2(function (p0,p1) {    return A2(_op[">>="],p0,function (f0) {    return A2(_op[">>="],p1,function (r1) {    return pure(f0(r1));});});});
+   _op["<$>"] = F2(function (f0,p1) {    return A2(_op["<*>"],pure(f0),p1);});
+   var list0 = F2(function (parse,ss) {
+      var loop = function (ss) {
+         var $do = A2(_op["<*>"],A2(_op["<$>"],F2(function (x,y) {    return A2($List._op["::"],x,y);}),parse),loop);
+         return $Result.Ok(A2($Result.withDefault,{ctor: "_Tuple2",_0: _U.list([]),_1: ss},$do(ss)));
+      };
+      return loop(ss);
+   });
+   var wspace = list0(A2(charPred,"expected whitespace",A2($Basics.flip,$Set.member,$Set.fromList($String.toList(" \t\v\n\r")))));
+   var bracket = F3(function (lch,rch,p0) {
+      return A2(_op["<*"],A2(_op["<*"],A2(_op["*>"],A2(_op["*>"],A2(_op["*>"],wspace,$char(lch)),wspace),p0),wspace),$char(rch));
+   });
+   var list1 = function (parse) {    return A2(_op["<*>"],A2(_op["<$>"],F2(function (x,y) {    return A2($List._op["::"],x,y);}),parse),list0(parse));};
+   var pointLetter = A2(_op[">>="],
+   A2(_op["<$>"],$String.fromChar,charInStr(alphaLowerUpper)),
+   lift(function (letter) {
+      var _p10 = A2($String.indices,letter,alphaLowerUpper);
+      if (_p10.ctor === "::" && _p10._1.ctor === "[]") {
+            return $Result.Ok(_p10._0 + 1);
+         } else {
+            return $Result.Err(A2($Basics._op["++"],"invalid letter \'",A2($Basics._op["++"],letter,"\'")));
+         }
+   }));
+   var pointValueText = A2(_op["<*>"],
+   A2(_op["<$>"],F2(function (v0,v1) {    return {ctor: "_Tuple2",_0: v0,_1: v1};}),pointLetter),
+   A2(_op["<$>"],function (l) {    return 20 - l;},pointLetter));
+   var pointValue = A3(bracket,_U.chr("["),_U.chr("]"),pointValueText);
+   var propIdent = A2(_op["<$>"],$String.fromList,list1(ucLetter));
+   var valueText = A2(_op["<$>"],$String.fromList,list0(valueTextChar));
+   var propValue = A3(bracket,_U.chr("["),_U.chr("]"),valueText);
+   var nat = A2(_op[">>="],A2(_op["<$>"],$String.fromList,list1(digit)),lift($String.toInt));
+   var string = function (str) {
+      var folder = F2(function (ch,cs) {    return A2(_op["<*>"],A2(_op["<$>"],F2(function (x,y) {    return A2($List._op["::"],x,y);}),$char(ch)),cs);});
+      return A2(_op["<$>"],$String.fromList,A3($List.foldr,folder,pure(_U.list([])),$String.toList(str)));
+   };
+   var PW = {ctor: "PW"};
+   var PB = {ctor: "PB"};
+   var AW = {ctor: "AW"};
+   var AB = {ctor: "AB"};
+   var AE = {ctor: "AE"};
+   var Size = function (a) {    return {ctor: "Size",_0: a};};
+   var sizeProperty = A2(_op["<$>"],Size,A2(_op["*>"],string("SZ"),A3(bracket,_U.chr("["),_U.chr("]"),nat)));
+   var Add = F2(function (a,b) {    return {ctor: "Add",_0: a,_1: b};});
+   var addProperty = function () {
+      var prop = F2(function (color,ident) {    return A2(_op["*>"],string(ident),A2(_op["<$>"],Add(color),list1(pointValue)));});
+      return A2(_op["<|>"],A2(_op["<|>"],A2(prop,AE,"AE"),A2(prop,AB,"AB")),A2(prop,AW,"AW"));
+   }();
+   var Play = F2(function (a,b) {    return {ctor: "Play",_0: a,_1: b};});
+   var playProperty = function () {
+      var prop = F2(function (color,ident) {    return A2(_op["*>"],string(ident),A2(_op["<$>"],Play(color),pointValue));});
+      return A2(_op["<|>"],A2(prop,PB,"B"),A2(prop,PW,"W"));
+   }();
+   var Basic = function (a) {    return {ctor: "Basic",_0: a};};
+   var basicProperty = A2(_op["<$>"],
+   Basic,
+   A2(_op["<*>"],A2(_op["<$>"],F2(function (v0,v1) {    return {ctor: "_Tuple2",_0: v0,_1: v1};}),propIdent),list1(propValue)));
+   var property = A2(_op["*>"],wspace,A2(_op["<|>"],A2(_op["<|>"],A2(_op["<|>"],playProperty,addProperty),sizeProperty),basicProperty));
+   var node = A2(_op["*>"],A2(_op["*>"],wspace,$char(_U.chr(";"))),list0(property));
+   var sequence = list1(node);
+   var GameTree = F2(function (a,b) {    return {ctor: "GameTree",_0: a,_1: b};});
+   var gameTree = function (ss) {    return A3(bracket,_U.chr("("),_U.chr(")"),A2(_op["<*>"],A2(_op["<$>"],GameTree,sequence),list0(gameTree)))(ss);};
+   var collection = A2(_op[">>="],A2(_op["<*"],list1(gameTree),wspace),eos);
+   var maybeSize = function (prop) {    var _p11 = prop;if (_p11.ctor === "Size") {    return $Maybe.Just(_p11._0);} else {    return $Maybe.Nothing;}};
+   var colorToStone = function (color) {
+      var _p12 = color;
+      if (_p12.ctor === "PB") {
+            return $Goban$Position.Black;
+         } else {
+            return $Goban$Position.White;
+         }
+   };
+   var applyProp = F2(function (prop,pos) {
+      var _p13 = prop;
+      switch (_p13.ctor)
+      {case "Play": return A2($Maybe.withDefault,pos,A2($Maybe.map,$Basics.fst,A3($Goban$Position.add,colorToStone(_p13._0),_p13._1,pos)));
+         case "Add": var folder = F2(function (pt,pos) {
+              var add = F2(function (stone,pos) {    return A2($Maybe.withDefault,pos,A2($Maybe.map,$Basics.fst,A3($Goban$Position.add,stone,pt,pos)));});
+              var update = function () {
+                 var _p14 = _p13._0;
+                 switch (_p14.ctor)
+                 {case "AE": return $Basics.identity;
+                    case "AB": return add($Goban$Position.Black);
+                    default: return add($Goban$Position.White);}
+              }();
+              return update(A2($Goban$Position.remove,pt,pos));
+           });
+           return A3($List.foldl,folder,pos,_p13._1);
+         default: return pos;}
+   });
+   var applyProps = $List.foldl(applyProp);
+   var stoneToPlayMetadata = F2(function (stone,md) {    return _U.update(md,{stoneToPlay: stone});});
+   var basicMetadata = F2(function (bp,md) {    return _U.update(md,{properties: A2($List._op["::"],bp,md.properties)});});
+   var addMetadata = function (md) {    return _U.update(md,{setup: true});};
+   var playMetadata = F2(function (stone,md) {    return _U.update(md,{stoneToPlay: $Goban$Position.invertStone(stone),setup: false});});
+   var updateMetadata = F2(function (prop,md) {
+      var _p15 = prop;
+      _v9_5: do {
+         switch (_p15.ctor)
+         {case "Play": return A2(playMetadata,colorToStone(_p15._0),md);
+            case "Add": return addMetadata(md);
+            case "Basic": if (_p15._0.ctor === "_Tuple2") {
+                    switch (_p15._0._0)
+                    {case "HA": return A2(stoneToPlayMetadata,$Goban$Position.White,md);
+                       case "PL": if (_p15._0._1.ctor === "::" && _p15._0._1._1.ctor === "[]") {
+                               switch (_p15._0._1._0)
+                               {case "B": return A2(stoneToPlayMetadata,$Goban$Position.Black,md);
+                                  case "W": return A2(stoneToPlayMetadata,$Goban$Position.White,md);
+                                  default: break _v9_5;}
+                            } else {
+                               break _v9_5;
+                            }
+                       default: break _v9_5;}
+                 } else {
+                    break _v9_5;
+                 }
+            default: return md;}
+      } while (false);
+      return A2(basicMetadata,_p15._0,md);
+   });
+   var applyNode = F2(function (node,_p16) {
+      var _p17 = _p16;
+      var pos$ = A2(applyProps,_p17._0._0,node);
+      var md$ = A3($List.foldl,updateMetadata,_U.update(_p17._0._1,{properties: _U.list([])}),node);
+      var pmd = {ctor: "_Tuple2",_0: pos$,_1: md$};
+      return {ctor: "_Tuple2",_0: pmd,_1: A2($List._op["::"],pmd,_p17._1)};
+   });
+   var applySeq = F2(function (pmd,seq) {
+      var _p18 = A3($List.foldl,applyNode,{ctor: "_Tuple2",_0: pmd,_1: _U.list([])},seq);
+      var last = _p18._0;
+      var trail = _p18._1;
+      return {ctor: "_Tuple2",_0: last,_1: A2($List.drop,1,trail)};
+   });
+   var applyGameTree = F2(function (pmd,_p19) {
+      var _p20 = _p19;
+      var newVT = F2(function (_p21,next) {
+         var _p22 = _p21;
+         return $Goban$Variation.VTree({position: _p22._0,metadata: _p22._1,children: $Maybe.Just({current: next,prev: _U.list([]),next: _U.list([])})});
+      });
+      var _p23 = A2(applySeq,pmd,_p20._0);
+      var pmd$ = _p23._0;
+      var trail = _p23._1;
+      var alts = A2($List.map,applyGameTree(pmd$),_p20._1);
+      var children = function () {
+         var _p24 = alts;
+         if (_p24.ctor === "[]") {
+               return $Maybe.Nothing;
+            } else {
+               return $Maybe.Just({current: _p24._0,prev: _U.list([]),next: _p24._1});
+            }
+      }();
+      var _p25 = pmd$;
+      var pos = _p25._0;
+      var md = _p25._1;
+      var last = $Goban$Variation.VTree({position: pos,metadata: md,children: children});
+      return A3($List.foldl,newVT,last,trail);
+   });
+   var emptyMetadata = {stoneToPlay: $Goban$Position.Black,setup: true,properties: _U.list([])};
+   var gtToVariation = function (gt) {
+      var _p26 = gt;
+      var seq = _p26._0;
+      var gts = _p26._1;
+      var mvt = function () {
+         var _p27 = seq;
+         if (_p27.ctor === "[]") {
+               return $Maybe.Nothing;
+            } else {
+               var _p28 = A2($List.filterMap,maybeSize,_p27._0);
+               if (_p28.ctor === "::") {
+                     return $Maybe.Just(A2(applyGameTree,{ctor: "_Tuple2",_0: $Goban$Position.empty(_p28._0),_1: emptyMetadata},gt));
+                  } else {
+                     return $Maybe.Nothing;
+                  }
+            }
+      }();
+      return A2($Maybe.map,function (vt) {    return {focus: vt,ancestors: _U.list([])};},mvt);
+   };
+   var toVariation = function (ss) {
+      return A2($Result.andThen,
+      collection(ss),
+      function (gts) {
+         var _p29 = gts;
+         if (_p29.ctor === "::" && _p29._1.ctor === "[]") {
+               var _p30 = gtToVariation(_p29._0);
+               if (_p30.ctor === "Nothing") {
+                     return $Result.Err({ctor: "_Tuple2",_0: "invalid game-tree",_1: ""});
+                  } else {
+                     return $Result.Ok(_p30._0);
+                  }
+            } else {
+               return $Result.Err({ctor: "_Tuple2",_0: "expected one game-tree",_1: ""});
+            }
+      });
+   };
+   var toVariations = function (ss) {
+      return A2($Result.andThen,collection(ss),function (_p31) {    return $Result.Ok(A2($List.filterMap,gtToVariation,_p31));});
+   };
+   var coordToLetter = function (c) {
+      return $String.fromChar(A2($Maybe.withDefault,_U.chr("0"),A2($Maybe.map,$Basics.fst,$String.uncons(A3($String.slice,c - 1,c,alphaLowerUpper)))));
+   };
+   var printPoint = function (_p32) {
+      var _p33 = _p32;
+      return A2($Basics._op["++"],"[",A2($Basics._op["++"],coordToLetter(_p33._0),A2($Basics._op["++"],coordToLetter(20 - _p33._1),"]")));
+   };
+   var printAdd = F2(function (ident,ps) {
+      var _p34 = A2($List.map,printPoint,ps);
+      if (_p34.ctor === "[]") {
+            return "";
+         } else {
+            return A2($Basics._op["++"],ident,$String.concat(_p34));
+         }
+   });
+   var printAdds = F2(function (added,removed) {
+      var es = A2(printAdd,"AE",removed);
+      var isBlack = function (_p35) {    var _p36 = _p35;var _p37 = _p36._1;if (_p37.ctor === "Black") {    return true;} else {    return false;}};
+      var _p38 = A2($List.partition,isBlack,added);
+      var bpss = _p38._0;
+      var wpss = _p38._1;
+      var bps = A2($List.map,$Basics.fst,bpss);
+      var bs = A2(printAdd,"AB",bps);
+      var wps = A2($List.map,$Basics.fst,wpss);
+      var ws = A2(printAdd,"AW",wps);
+      return A2($Basics._op["++"],es,A2($Basics._op["++"],bs,ws));
+   });
+   var printPlay = F2(function (stone,point) {
+      var ident = function () {    var _p39 = stone;if (_p39.ctor === "Black") {    return "B";} else {    return "W";}}();
+      return A2($Basics._op["++"],ident,printPoint(point));
+   });
+   var printDiff = F3(function (p0,p1,_p40) {
+      var _p41 = _p40;
+      var _p42 = A2($Goban$Position.diff,p0,p1);
+      var added = _p42.added;
+      var removed = _p42.removed;
+      if (_p41.setup) return A2(printAdds,added,removed); else {
+            var _p43 = added;
+            if (_p43.ctor === "::" && _p43._0.ctor === "_Tuple2" && _p43._1.ctor === "[]") {
+                  return A2(printPlay,_p43._0._1,_p43._0._0);
+               } else {
+                  return A2(printAdds,added,removed);
+               }
+         }
+   });
+   var charToStr = function ($char) {
+      var _p44 = $char;
+      switch (_p44.valueOf())
+      {case "]": return "\\]";
+         case "\\": return "\\";
+         default: return $String.fromChar($char);}
+   };
+   var toValText = function (str) {    return A2($Basics._op["++"],"[",A2($Basics._op["++"],$String.concat(A2($List.map,charToStr,$String.toList(str))),"]"));};
+   var printBasic = function (_p45) {
+      var _p46 = _p45;
+      var _p48 = _p46._0;
+      var _p47 = _p48;
+      switch (_p47)
+      {case "GM": return "";
+         case "FF": return "";
+         case "CA": return "";
+         case "AP": return "";
+         case "ST": return "";
+         case "SZ": return "";
+         default: return A2($Basics._op["++"],_p48,$String.concat(A2($List.map,toValText,_p46._1)));}
+   };
+   var printMetadata = function (_p49) {    var _p50 = _p49;return $String.concat(A2($List.map,printBasic,_p50._0.metadata.properties));};
+   var printRoot = function (size) {
+      return A2($Basics._op["++"],"GM[1]FF[4]CA[UTF-8]AP[elm-goban:0]ST[2]SZ[",A2($Basics._op["++"],$Basics.toString(size),"]"));
+   };
+   var printPosition = F2(function (p0,_p51) {
+      var _p52 = _p51;
+      var _p54 = _p52._0.position;
+      var alts = function () {
+         var _p53 = _p52._0.children;
+         if (_p53.ctor === "Nothing") {
+               return _U.list([]);
+            } else {
+               return A2($Basics._op["++"],$List.reverse(_p53._0.prev),A2($List._op["::"],_p53._0.current,_p53._0.next));
+            }
+      }();
+      return A2($Basics._op["++"],A3(printDiff,p0,_p54,_p52._0.metadata),A2(printAlts,_p54,alts));
+   });
+   var printAlts = F2(function (parent,alts) {
+      var _p55 = alts;
+      if (_p55.ctor === "[]") {
+            return "";
+         } else {
+            if (_p55._1.ctor === "[]") {
+                  return A2(printSeq,parent,_p55._0);
+               } else {
+                  return $String.concat(A2($List.map,printTree(parent),alts));
+               }
+         }
+   });
+   var printSeq = F2(function (p0,vt) {    return A2($Basics._op["++"],";",A2(printPosition,p0,vt));});
+   var printTree = F2(function (p0,vt) {    return A2($Basics._op["++"],"(;",A2($Basics._op["++"],A2(printPosition,p0,vt),")"));});
+   var printRootTree = function (vt) {
+      var _p56 = vt;
+      var position = _p56._0.position;
+      var tree = A2(printPosition,$Goban$Position.empty(position.size),vt);
+      return A2($Basics._op["++"],"(;",A2($Basics._op["++"],printRoot(position.size),A2($Basics._op["++"],tree,")")));
+   };
+   var fromVariation = function (vcur) {    return printRootTree($Goban$Variation.firstPos(vcur).focus);};
+   var Metadata = F3(function (a,b,c) {    return {stoneToPlay: a,setup: b,properties: c};});
+   return _elm.Goban.SGF.values = {_op: _op
+                                  ,Metadata: Metadata
+                                  ,fromVariation: fromVariation
+                                  ,printRootTree: printRootTree
+                                  ,printPosition: printPosition
+                                  ,printAlts: printAlts
+                                  ,printTree: printTree
+                                  ,printSeq: printSeq
+                                  ,printRoot: printRoot
+                                  ,charToStr: charToStr
+                                  ,toValText: toValText
+                                  ,printBasic: printBasic
+                                  ,printMetadata: printMetadata
+                                  ,coordToLetter: coordToLetter
+                                  ,printPoint: printPoint
+                                  ,printAdd: printAdd
+                                  ,printAdds: printAdds
+                                  ,printPlay: printPlay
+                                  ,printDiff: printDiff
+                                  ,toVariations: toVariations
+                                  ,toVariation: toVariation
+                                  ,emptyMetadata: emptyMetadata
+                                  ,playMetadata: playMetadata
+                                  ,addMetadata: addMetadata
+                                  ,basicMetadata: basicMetadata
+                                  ,stoneToPlayMetadata: stoneToPlayMetadata
+                                  ,updateMetadata: updateMetadata
+                                  ,gtToVariation: gtToVariation
+                                  ,applyGameTree: applyGameTree
+                                  ,applySeq: applySeq
+                                  ,applyNode: applyNode
+                                  ,applyProps: applyProps
+                                  ,applyProp: applyProp
+                                  ,colorToStone: colorToStone
+                                  ,maybeSize: maybeSize
+                                  ,GameTree: GameTree
+                                  ,Basic: Basic
+                                  ,Play: Play
+                                  ,Add: Add
+                                  ,Size: Size
+                                  ,AE: AE
+                                  ,AB: AB
+                                  ,AW: AW
+                                  ,PB: PB
+                                  ,PW: PW
+                                  ,pure: pure
+                                  ,lift: lift
+                                  ,eos: eos
+                                  ,charPred: charPred
+                                  ,$char: $char
+                                  ,charInStr: charInStr
+                                  ,string: string
+                                  ,list0: list0
+                                  ,list1: list1
+                                  ,wspace: wspace
+                                  ,bracket: bracket
+                                  ,collection: collection
+                                  ,gameTree: gameTree
+                                  ,sequence: sequence
+                                  ,node: node
+                                  ,property: property
+                                  ,playProperty: playProperty
+                                  ,addProperty: addProperty
+                                  ,pointValue: pointValue
+                                  ,pointValueText: pointValueText
+                                  ,pointLetter: pointLetter
+                                  ,sizeProperty: sizeProperty
+                                  ,basicProperty: basicProperty
+                                  ,propIdent: propIdent
+                                  ,ucLetter: ucLetter
+                                  ,propValue: propValue
+                                  ,valueText: valueText
+                                  ,valueTextChar: valueTextChar
+                                  ,nat: nat
+                                  ,digit: digit
+                                  ,alphaUpper: alphaUpper
+                                  ,alphaLower: alphaLower
+                                  ,alphaLowerUpper: alphaLowerUpper
+                                  ,digits: digits};
 };Elm.Goban = Elm.Goban || {};
 Elm.Goban.UI = Elm.Goban.UI || {};
 Elm.Goban.UI.make = function (_elm) {
@@ -6923,136 +7520,6 @@ Elm.Goban.UI.make = function (_elm) {
                                  ,defaultStonesForm: defaultStonesForm
                                  ,defaultPositionForm: defaultPositionForm
                                  ,absoluteToCoord: absoluteToCoord};
-};Elm.Goban = Elm.Goban || {};
-Elm.Goban.Variation = Elm.Goban.Variation || {};
-Elm.Goban.Variation.make = function (_elm) {
-   "use strict";
-   _elm.Goban = _elm.Goban || {};
-   _elm.Goban.Variation = _elm.Goban.Variation || {};
-   if (_elm.Goban.Variation.values) return _elm.Goban.Variation.values;
-   var _U = Elm.Native.Utils.make(_elm),
-   $Basics = Elm.Basics.make(_elm),
-   $Debug = Elm.Debug.make(_elm),
-   $Goban$Position = Elm.Goban.Position.make(_elm),
-   $List = Elm.List.make(_elm),
-   $Maybe = Elm.Maybe.make(_elm),
-   $Result = Elm.Result.make(_elm),
-   $Signal = Elm.Signal.make(_elm);
-   var _op = {};
-   var nextPos = function (_p0) {
-      var _p1 = _p0;
-      var nextPosVT = F2(function (ancestors,_p2) {
-         var _p3 = _p2;
-         return A2($Maybe.andThen,
-         _p3._0.children,
-         function (_p4) {
-            var _p5 = _p4;
-            var parent = {position: _p3._0.position,prev: _p5.prev,next: _p5.next};
-            return $Maybe.Just({focus: _p5.current,ancestors: A2($List._op["::"],parent,ancestors)});
-         });
-      });
-      return A2(nextPosVT,_p1.ancestors,_p1.focus);
-   };
-   var get = function (_p6) {    var _p7 = _p6;var _p8 = _p7.focus;var position = _p8._0.position;return position;};
-   var withFocus = F2(function (op,cursor) {
-      return A2($Maybe.andThen,op(cursor.focus),function (focus) {    return $Maybe.Just(_U.update(cursor,{focus: focus}));});
-   });
-   var VCursor = F2(function (a,b) {    return {focus: a,ancestors: b};});
-   var Context = F3(function (a,b,c) {    return {position: a,prev: b,next: c};});
-   var VTree = function (a) {    return {ctor: "VTree",_0: a};};
-   var empty = function (size) {    return {focus: VTree({position: $Goban$Position.empty(size),children: $Maybe.Nothing}),ancestors: _U.list([])};};
-   var edit = F2(function (op,cursor) {
-      var trans = function (_p9) {    var _p10 = _p9;var _p11 = _p10._0;return VTree(_U.update(_p11,{position: op(_p11.position)}));};
-      return _U.update(cursor,{focus: trans(cursor.focus)});
-   });
-   var put = function (pos) {    return edit(function (_p12) {    return pos;});};
-   var newAlt = F2(function (alt,cursor) {
-      var op = function (_p13) {
-         var _p14 = _p13;
-         var _p17 = _p14._0;
-         var alts$ = function () {
-            var _p15 = _p17.children;
-            if (_p15.ctor === "Nothing") {
-                  return {current: alt,prev: _U.list([]),next: _U.list([])};
-               } else {
-                  var _p16 = _p15._0;
-                  return _U.update(_p16,{current: alt,prev: A2($List._op["::"],_p16.current,_p16.prev)});
-               }
-         }();
-         return VTree(_U.update(_p17,{children: $Maybe.Just(alts$)}));
-      };
-      return _U.update(cursor,{focus: op(cursor.focus)});
-   });
-   var add = F2(function (pos,cursor) {
-      var cursor$ = A2(newAlt,VTree({position: pos,children: $Maybe.Nothing}),cursor);
-      return A2($Maybe.withDefault,cursor$,nextPos(cursor$));
-   });
-   var prevPos = function (_p18) {
-      var _p19 = _p18;
-      var _p20 = _p19.ancestors;
-      if (_p20.ctor === "[]") {
-            return $Maybe.Nothing;
-         } else {
-            var children = $Maybe.Just({current: _p19.focus,prev: _p20._0.prev,next: _p20._0.next});
-            var vt = VTree({position: _p20._0.position,children: children});
-            return $Maybe.Just({focus: vt,ancestors: _p20._1});
-         }
-   };
-   var nextAlt = function () {
-      var nextAltVT = function (_p21) {
-         var _p22 = _p21;
-         var _p26 = _p22._0;
-         return A2($Maybe.andThen,
-         _p26.children,
-         function (_p23) {
-            var _p24 = _p23;
-            var _p25 = _p24.next;
-            if (_p25.ctor === "[]") {
-                  return $Maybe.Nothing;
-               } else {
-                  var alts = $Maybe.Just({current: _p25._0,prev: A2($List._op["::"],_p24.current,_p24.prev),next: _p25._1});
-                  return $Maybe.Just(VTree(_U.update(_p26,{children: alts})));
-               }
-         });
-      };
-      return withFocus(nextAltVT);
-   }();
-   var prevAlt = function () {
-      var prevAltVT = function (_p27) {
-         var _p28 = _p27;
-         var _p32 = _p28._0;
-         return A2($Maybe.andThen,
-         _p32.children,
-         function (_p29) {
-            var _p30 = _p29;
-            var _p31 = _p30.prev;
-            if (_p31.ctor === "[]") {
-                  return $Maybe.Nothing;
-               } else {
-                  var alts = $Maybe.Just({current: _p31._0,prev: _p31._1,next: A2($List._op["::"],_p30.current,_p30.next)});
-                  return $Maybe.Just(VTree(_U.update(_p32,{children: alts})));
-               }
-         });
-      };
-      return withFocus(prevAltVT);
-   }();
-   var Alts = F3(function (a,b,c) {    return {current: a,prev: b,next: c};});
-   return _elm.Goban.Variation.values = {_op: _op
-                                        ,Alts: Alts
-                                        ,VTree: VTree
-                                        ,Context: Context
-                                        ,VCursor: VCursor
-                                        ,empty: empty
-                                        ,withFocus: withFocus
-                                        ,get: get
-                                        ,edit: edit
-                                        ,put: put
-                                        ,add: add
-                                        ,newAlt: newAlt
-                                        ,nextPos: nextPos
-                                        ,prevPos: prevPos
-                                        ,nextAlt: nextAlt
-                                        ,prevAlt: prevAlt};
 };Elm.Main = Elm.Main || {};
 Elm.Main.make = function (_elm) {
    "use strict";
@@ -7062,6 +7529,7 @@ Elm.Main.make = function (_elm) {
    $Basics = Elm.Basics.make(_elm),
    $Debug = Elm.Debug.make(_elm),
    $Goban$Position = Elm.Goban.Position.make(_elm),
+   $Goban$SGF = Elm.Goban.SGF.make(_elm),
    $Goban$UI = Elm.Goban.UI.make(_elm),
    $Goban$Variation = Elm.Goban.Variation.make(_elm),
    $Graphics$Collage = Elm.Graphics.Collage.make(_elm),
@@ -7100,35 +7568,28 @@ Elm.Main.make = function (_elm) {
       },
       _p4._0.children));
    };
-   var variationInfo = function (vs) {
-      var _p6 = altCounts(vs.vcur.focus);
+   var variationInfo = function (vcur) {
+      var _p6 = altCounts(vcur.focus);
       var prevCount = _p6._0;
       var nextCount = _p6._1;
       var altInfo = $Graphics$Element.leftAligned($Text.fromString(A2($Basics._op["++"],
       "Variation ",
       A2($Basics._op["++"],$Basics.toString(prevCount + 1),A2($Basics._op["++"]," of ",$Basics.toString(prevCount + 1 + nextCount))))));
-      var currentCount = $List.length(vs.vcur.ancestors);
-      var totalCount = currentCount + forwardMoveCount(vs.vcur.focus);
+      var currentCount = $List.length(vcur.ancestors);
+      var totalCount = currentCount + forwardMoveCount(vcur.focus);
       var moveInfo = $Graphics$Element.leftAligned($Text.fromString(A2($Basics._op["++"],
       "Move ",
       A2($Basics._op["++"],$Basics.toString(currentCount),A2($Basics._op["++"]," of ",$Basics.toString(totalCount))))));
       return A2($Graphics$Element.above,moveInfo,altInfo);
    };
-   var navigateVariations = F2(function (_p7,state) {
+   var navigateVariations = F2(function (_p7,vcur) {
       var _p8 = _p7;
-      var _p11 = _p8.y;
-      var _p10 = _p8.x;
-      var update = function (st) {
-         return function (_p9) {
-            return A2($Maybe.withDefault,state,A2($Maybe.map,function (vcur$) {    return {stone: st,vcur: vcur$};},_p9));
-         };
-      };
-      var update1 = update(state.stone);
-      var stone$ = $Goban$Position.invertStone(state.stone);
-      var update0 = update(stone$);
-      return _U.eq(_p10,1) && _U.eq(_p11,0) ? update0($Goban$Variation.nextPos(state.vcur)) : _U.eq(_p10,-1) && _U.eq(_p11,
-      0) ? update0($Goban$Variation.prevPos(state.vcur)) : _U.eq(_p10,0) && _U.eq(_p11,1) ? update1($Goban$Variation.prevAlt(state.vcur)) : _U.eq(_p10,
-      0) && _U.eq(_p11,-1) ? update1($Goban$Variation.nextAlt(state.vcur)) : state;
+      var _p10 = _p8.y;
+      var _p9 = _p8.x;
+      return A2($Maybe.withDefault,
+      vcur,
+      _U.eq(_p9,1) && _U.eq(_p10,0) ? $Goban$Variation.nextPos(vcur) : _U.eq(_p9,-1) && _U.eq(_p10,0) ? $Goban$Variation.prevPos(vcur) : _U.eq(_p9,
+      0) && _U.eq(_p10,1) ? $Goban$Variation.prevAlt(vcur) : _U.eq(_p9,0) && _U.eq(_p10,-1) ? $Goban$Variation.nextAlt(vcur) : $Maybe.Nothing);
    });
    var arrowView = A2($Signal.map,$Graphics$Element.show,$Keyboard.arrows);
    var coffset = 10;
@@ -7145,39 +7606,38 @@ Elm.Main.make = function (_elm) {
       $Graphics$Element.show(clickPos));
    });
    var mouseView = A3($Signal.map2,view,$Mouse.position,A2($Signal.sampleOn,$Mouse.clicks,$Mouse.position));
-   var placeStone = F2(function (mc,_p12) {
-      var _p13 = _p12;
-      var _p18 = _p13.vcur;
-      var _p17 = _p13.stone;
+   var placeStone = F2(function (mc,vcur) {
       var mcoord = posToCoord(mc);
-      var _p14 = _p18.focus;
-      var vt = _p14._0;
-      var _p15 = function () {
-         var _p16 = A2($Maybe.andThen,mcoord,function (coord) {    return A3($Goban$Position.add,_p17,coord,vt.position);});
-         if (_p16.ctor === "Nothing") {
-               return {ctor: "_Tuple2",_0: _p17,_1: _p18};
-            } else {
-               return {ctor: "_Tuple2",_0: $Goban$Position.invertStone(_p17),_1: A2($Goban$Variation.add,_p16._0._0,_p18)};
-            }
-      }();
-      var stone$ = _p15._0;
-      var vcur$ = _p15._1;
-      return {stone: stone$,vcur: vcur$};
+      var _p11 = vcur.focus;
+      var vt = _p11._0;
+      var _p12 = vt.metadata;
+      var stoneToPlay = _p12.stoneToPlay;
+      var _p13 = A2($Maybe.andThen,mcoord,function (coord) {    return A3($Goban$Position.add,stoneToPlay,coord,vt.position);});
+      if (_p13.ctor === "Nothing") {
+            return vcur;
+         } else {
+            return A3($Goban$Variation.add,_p13._0._0,A2($Goban$SGF.playMetadata,stoneToPlay,$Goban$SGF.emptyMetadata),vcur);
+         }
    });
-   var update = function (gi) {    var _p19 = gi;if (_p19.ctor === "IClick") {    return placeStone(_p19._0);} else {    return navigateVariations(_p19._0);}};
+   var update = function (gi) {    var _p14 = gi;if (_p14.ctor === "IClick") {    return placeStone(_p14._0);} else {    return navigateVariations(_p14._0);}};
    var cdim = coffset * 2 + $Basics.round(cscale * cdiam * (cedge + cpfs.margin));
    var positionElement = function () {
       var dpf = $Goban$UI.defaultPositionForm(cpfs);
       var form = function (pos) {    return A3($Graphics$Collage.collage,cdim,cdim,_U.list([A2($Graphics$Collage.scale,cscale,dpf(pos))]));};
       return form;
    }();
-   var variationState = A3($Signal.foldp,update,{stone: $Goban$Position.Black,vcur: $Goban$Variation.empty(cedge)},input);
-   var variationView = A2($Signal.map,function (vs) {    return positionElement($Goban$Variation.get(vs.vcur));},variationState);
+   var initVar = A2($Goban$Variation.empty,cedge,$Goban$SGF.emptyMetadata);
+   var variationState = A3($Signal.foldp,update,initVar,input);
+   var variationView = A2($Signal.map,function (_p15) {    return positionElement($Goban$Variation.get(_p15));},variationState);
    var variationInfoView = A2($Signal.map,variationInfo,variationState);
+   var sgfView = A2($Signal.map,function (_p16) {    return $Graphics$Element.show($Goban$SGF.fromVariation(_p16));},variationState);
    var main = A3($Signal.map2,
    $Graphics$Element.above,
    variationView,
-   A3($Signal.map2,$Graphics$Element.above,variationInfoView,A3($Signal.map2,$Graphics$Element.above,arrowView,mouseView)));
+   A3($Signal.map2,
+   $Graphics$Element.above,
+   variationInfoView,
+   A3($Signal.map2,$Graphics$Element.above,sgfView,A3($Signal.map2,$Graphics$Element.above,arrowView,mouseView))));
    return _elm.Main.values = {_op: _op
                              ,cedge: cedge
                              ,cdiam: cdiam
@@ -7201,8 +7661,10 @@ Elm.Main.make = function (_elm) {
                              ,iclicks: iclicks
                              ,iarrows: iarrows
                              ,input: input
+                             ,initVar: initVar
                              ,variationState: variationState
                              ,variationView: variationView
                              ,variationInfoView: variationInfoView
+                             ,sgfView: sgfView
                              ,main: main};
 };</script></head><body><script type="text/javascript">Elm.fullscreen(Elm.Main)</script></body></html>
