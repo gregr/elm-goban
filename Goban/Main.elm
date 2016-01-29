@@ -71,5 +71,6 @@ initVar = GV.empty cedge GS.emptyMetadata
 variationState = Signal.foldp update initVar input
 variationView = Signal.map (positionElement << GV.get) variationState
 variationInfoView = Signal.map variationInfo variationState
+sgfView = Signal.map (GE.show << GS.fromVariation) variationState
 
-main = Signal.map2 GE.above variationView <| Signal.map2 GE.above variationInfoView <| Signal.map2 GE.above arrowView mouseView
+main = Signal.map2 GE.above variationView <| Signal.map2 GE.above variationInfoView <| Signal.map2 GE.above sgfView <| Signal.map2 GE.above arrowView mouseView
