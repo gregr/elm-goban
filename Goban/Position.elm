@@ -47,6 +47,15 @@ add stone coord position =
               Just result -> result
               Nothing -> (position', Nothing)
 
+diff : Position -> Position -> { added : List (Coord, Stone)
+                               , removed : List Coord }
+diff pos0 pos1 =
+  let g0 = pos0.grid
+      g1 = pos1.grid
+      added = Dict.toList <| Dict.diff g1 g0
+      removed = Dict.keys <| Dict.diff g0 g1
+  in { added = added, removed = removed }
+
 captured position stone coords =
   let friendly (_, s) = stone == s
       captured1 coord ((seen, safe), found) =
