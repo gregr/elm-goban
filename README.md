@@ -4,6 +4,8 @@ Try the [interactive example](http://www.gregrosenblatt.com/elm-goban/)!  Curren
 
 ## TODO
 
+- flip y-coord for consistency with SGF format
+
 - variation trees
     - simple whole-variation ko recognition
         - check for identical positions in a particular variation
